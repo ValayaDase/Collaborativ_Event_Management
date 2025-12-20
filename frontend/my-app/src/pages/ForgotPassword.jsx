@@ -19,7 +19,7 @@ export default function ForgotPassword() {
       return toast.error("Passwords do not match");
     }
 
-    const res = await axios.post("http://localhost:5000/auth/reset-password", {
+    const res = await axios.post("https://collaborativ-event-management-3.onrender.com/auth/reset-password", {
       email,
       newPassword: password,
     });
