@@ -22,7 +22,7 @@ export default function Login() {
     setForm({ ...form, [e.target.name]: e.target.value });
 
   const login = async () => {
-    const res = await axios.post("http://localhost:5000/auth/login", form);
+    const res = await axios.post("https://collaborativ-event-management-3.onrender.com/auth/login", form);
 
     if (res.data.token) {
       localStorage.setItem("token", res.data.token);
