@@ -19,7 +19,7 @@ export default function Dashboard() {
 
   // LOAD EVENTS FOR USER
   const loadEvents = async () => {
-    const res = await axios.get("http://localhost:5000/event/user-events", {
+    const res = await axios.get("https://collaborativ-event-management-3.onrender.com/event/user-events", {
       headers: {
         Authorization: `Bearer ${localStorage.getItem("token")}`,
       },
@@ -38,7 +38,7 @@ export default function Dashboard() {
   // CREATE EVENT
   const createEvent = async () => {
     const res = await axios.post(
-      "http://localhost:5000/event/create",
+      "https://collaborativ-event-management-3.onrender.com/event/create",
       { eventName },
       {
         headers: {
@@ -60,7 +60,7 @@ export default function Dashboard() {
 
   // DELETE EVENT
   const deleteEvent = async (eventId) => {
-    const res = await axios.delete(`http://localhost:5000/event/${eventId}`, {
+    const res = await axios.delete(`https://collaborativ-event-management-3.onrender.com/event/${eventId}`, {
       headers: {
         Authorization: `Bearer ${localStorage.getItem("token")}`,
       },
@@ -76,7 +76,7 @@ export default function Dashboard() {
   // JOIN EVENT
   const joinEvent = async () => {
     const res = await axios.post(
-      "http://localhost:5000/event/join",
+      "https://collaborativ-event-management-3.onrender.com/event/join",
       { eventCode: joinCode },
       {
         headers: {
