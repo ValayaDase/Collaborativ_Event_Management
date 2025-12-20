@@ -28,7 +28,7 @@ export default function ChatBox({ eventId, isOpen, isFinished }) {
       setLoading(true);
       try {
         const res = await axios.get(
-          `http://localhost:5000/chat/${eventId}`,
+          `https://collaborativ-event-management-3.onrender.com/chat/${eventId}`,
           {
             headers: {
               Authorization: `Bearer ${localStorage.getItem("token")}`,
@@ -75,7 +75,7 @@ export default function ChatBox({ eventId, isOpen, isFinished }) {
 
     try {
       const res = await axios.post(
-        `http://localhost:5000/chat/${eventId}`,
+        `https://collaborativ-event-management-3.onrender.com/chat/${eventId}`,
         { text: newMessage },
         {
           headers: {
