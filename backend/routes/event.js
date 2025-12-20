@@ -8,7 +8,7 @@ import { getIO } from "../socket.js";
 
 const router = express.Router();
 
-// ---------- CREATE EVENT (already using this) ----------
+// ---------- CREATE EVENT ----------
 router.post("/create", auth, async (req, res) => {
   try {
     const { eventName } = req.body;
@@ -19,19 +19,17 @@ router.post("/create", auth, async (req, res) => {
     const event = await Event.create({
       eventName,
       eventCode,
-      organizer: userId,
+      organizer:  userId,
       members: [userId]
     });
 
-    // after add information to event collection we have to update user collection of that user
-
     await User.findByIdAndUpdate(userId, {
-      $push: { createdEvents: event._id, joinedEvents: event._id }
-    });           // created event and joined event both are array in user model push help to add new event id to these arrays
+      $push:  { createdEvents: event._id, joinedEvents: event._id }
+    });
 
     return res.json({
       success: true,
-      message: "Event created successfully",
+      message:  "Event created successfully",
       eventCode,
       event
     });
@@ -41,7 +39,7 @@ router.post("/create", auth, async (req, res) => {
 });
 
 // ---------- DELETE EVENT ----------
-router.delete("/:id",auth,async(req,res)=>{
+router. delete("/:id",auth,async(req,res)=>{
   try{
     const eventId = req.params.id;
     const userId = req.userId;
@@ -53,22 +51,17 @@ router.delete("/:id",auth,async(req,res)=>{
       return res.json({success:false,error:"Only organizer can delete event"});
     }
 
-    // remove event from all members dashboards
     await User.updateMany(
       {joinedEvents: eventId },
       { $pull: { joinedEvents: eventId } }
     );
 
-    // remove event from organizer created events
     await User.updateOne(
       { _id: userId },
-      { $pull: { createdEvents: eventId } }  // pull operator use to remove specific value from createdEvents array
+      { $pull: { createdEvents: eventId } }
     );
 
-    // delete all chats of this event
     await Message.deleteMany({ eventId });
-
-    // delete event itself
     await Event.findByIdAndDelete(eventId);
 
     return res.json({success:true,message:"Event deleted successfully"});
@@ -76,38 +69,31 @@ router.delete("/:id",auth,async(req,res)=>{
   catch(err){
     return res.json({success:false,error:err.message});
   }
-})
+});
 
-
-
-
-
-
-
-
-// ---------- JOIN EVENT (already using this) ----------
-router.post("/join", auth, async (req, res) => {
+// ---------- JOIN EVENT ----------
+router. post("/join", auth, async (req, res) => {
   try {
     const { eventCode } = req.body;
     const userId = req.userId;
 
     const event = await Event.findOne({ eventCode });
 
-    if (!event) return res.json({ success: false, error: "Invalid event code" });
+    if (!event) return res.json({ success: false, error:  "Invalid event code" });
 
     if (event.members.includes(userId)) {
-      return res.json({ success: true, message: "Already joined", event });
-    }       // if member id is already in members array then no need to add again
+      return res. json({ success: true, message:  "Already joined", event });
+    }
 
-    event.members.push(userId);     // add user id to members array of that event
+    event.members.push(userId);
     await event.save();
 
     await User.findByIdAndUpdate(userId, {
-      $push: { joinedEvents: event._id }
-    });        // add event id to joined events array of that user
+      $push: { joinedEvents:  event._id }
+    });
 
-    const io = getIO();   //getIO() tumhara Socket.io ka main server instance deta hai. 
-    io.to(String(event._id)).emit("members-updated", event.members);  // notify all members about new member joined
+    const io = getIO();
+    io.to(String(event._id)).emit("members-updated", event.members);
 
     res.json({ success: true, message: "Joined event", event });
   } catch (err) {
@@ -149,7 +135,7 @@ router.get("/:id", auth, async (req, res) => {
 
     res.json({ success: true, event });
   } catch (err) {
-    res.json({ success: false, error: err.message });
+    res.json({ success: false, error:  err.message });
   }
 });
 
@@ -162,20 +148,20 @@ router.post("/:id/tasks", auth, async (req, res) => {
 
     const event = await Event.findById(eventId);
 
-    if (!event) return res.json({ success: false, error: "Event not found" });
+    if (!event) return res.json({ success: false, error:  "Event not found" });
 
     if (event.organizer.toString() !== userId.toString()) {
       return res.json({ success: false, error: "Only organizer can assign tasks" });
     }
 
-    event.tasks.push({
+    // Add task at the beginning (unshift) so new tasks appear at top
+    event.tasks.unshift({
       title,
       description,
       assignedTo
     });
 
     await event.save();
-
     await event.populate("tasks.assignedTo", "username email");
 
     const io = getIO();
@@ -197,10 +183,9 @@ router.patch("/:eventId/tasks/:taskId/status", auth, async (req, res) => {
     const event = await Event.findById(eventId);
     if (!event) return res.json({ success: false, error: "Event not found" });
 
-    const task = event.tasks.id(taskId);
+    const task = event.tasks. id(taskId);
     if (!task) return res.json({ success: false, error: "Task not found" });
 
-    // Ensure assignedTo is normalized
     const assignedId = String(task.assignedTo);
 
     if (assignedId !== String(userId)) {
@@ -221,15 +206,50 @@ router.patch("/:eventId/tasks/:taskId/status", auth, async (req, res) => {
 
     res.json({
       success: true,
-      message: "Status updated",
-      tasks: updatedEvent.tasks
+      message:  "Status updated",
+      tasks:  updatedEvent.tasks
     });
   } catch (err) {
     res.json({ success: false, error: err.message });
   }
 });
 
+// ---------- DELETE TASK (ORGANIZER ONLY) ----------
+router.delete("/:eventId/tasks/:taskId", auth, async (req, res) => {
+  try {
+    const { eventId, taskId } = req.params;
+    const userId = req.userId;
 
+    const event = await Event.findById(eventId);
+    if (!event) return res.status(404).json({ success: false, error: "Event not found" });
+
+    // Check if user is organizer
+    if (event.organizer.toString() !== userId.toString()) {
+      return res.status(403).json({ 
+        success: false, 
+        error: "Only organizer can delete tasks" 
+      });
+    }
+
+    // Remove the task using pull (works with subdocuments)
+    event.tasks.pull(taskId);
+    await event.save();
+
+    // Populate and emit updated tasks
+    await event.populate("tasks.assignedTo", "username email");
+
+    const io = getIO();
+    io.to(String(eventId)).emit("tasks-updated", event.tasks);
+
+    res.json({ 
+      success: true, 
+      message: "Task deleted successfully",
+      tasks: event.tasks 
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
 
 // ---------- FINISH EVENT (ORGANIZER ONLY) ----------
 router.post("/:id/finish", auth, async (req, res) => {
@@ -252,7 +272,7 @@ router.post("/:id/finish", auth, async (req, res) => {
 
     res.json({ success: true, message: "Event finished" });
   } catch (err) {
-    res.json({ success: false, error: err.message });
+    res.json({ success: false, error: err. message });
   }
 });
 

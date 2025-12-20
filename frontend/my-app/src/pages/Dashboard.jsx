@@ -50,11 +50,8 @@ export default function Dashboard() {
     if (res.data.success) {
       setShowCreateModal(false);
       setEventName("");
-
-      // show event code modal
       setCreatedEventCode(res.data.eventCode);
       toast.success("Event created successfully!");
-
       loadEvents();
     } else {
       toast.error(res.data.error);
@@ -106,107 +103,95 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-linear-to-br from-slate-50 via-blue-50 to-purple-50">
+    <div className="min-h-screen bg-linear-to-br from-gray-50 to-blue-100">
       {/* Header */}
-      <div className="bg-white shadow-md border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-6 py-6 flex justify-between items-center">
+      <div className="bg-white shadow-sm sticky top-0 z-40">
+        <div className="max-w-6xl mx-auto px-4 py-4 flex justify-between items-center">
           <div>
-            <h1 className="text-3xl font-bold text-gray-800">Dashboard</h1>
-            <p className="text-gray-600 mt-1">Manage your events and collaborations</p>
+            <h1 className="text-2xl font-bold text-gray-800">Dashboard</h1>
+            <p className="text-sm text-gray-600">Manage your events</p>
           </div>
           <button
-            className="flex items-center gap-2 px-5 py-2.5 bg-linear-to-r from-red-500 to-pink-500 text-white rounded-lg font-semibold hover:from-red-600 hover:to-pink-600 transition-all transform hover:scale-105 shadow-md"
+            className="flex items-center gap-2 px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600"
             onClick={logout}
           >
-            <IoLogOut className="w-5 h-5" />
+            <IoLogOut className="w-4 h-4" />
             Logout
           </button>
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-6 py-8">
-        {/* Action Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-12">
-          <div
-            className="bg-white rounded-2xl shadow-lg p-8 cursor-pointer hover:shadow-xl transition-all transform hover:scale-105 border border-gray-100"
+      <div className="max-w-6xl mx-auto px-4 py-6">
+        {/* Action Buttons */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+          <button
+            className="bg-white p-6 rounded-lg shadow hover:shadow-lg transition flex items-center gap-4"
             onClick={() => setShowCreateModal(true)}
           >
-            <div className="flex items-start gap-4">
-              <div className="p-4 bg-linear-to-br from-blue-500 to-purple-600 rounded-xl">
-                <MdAdd className="w-8 h-8 text-white" />
-              </div>
-              <div className="flex-1">
-                <h2 className="text-2xl font-bold text-gray-800 mb-2">Create Event</h2>
-                <p className="text-gray-600">
-                  Start a new event and invite your team with a shareable code
-                </p>
-              </div>
+            <div className="p-3 bg-blue-500 text-white rounded-lg">
+              <MdAdd className="w-6 h-6" />
             </div>
-          </div>
+            <div className="text-left">
+              <h2 className="text-lg font-bold text-gray-800">Create Event</h2>
+              <p className="text-sm text-gray-600">Start a new event</p>
+            </div>
+          </button>
 
-          <div
-            className="bg-white rounded-2xl shadow-lg p-8 cursor-pointer hover:shadow-xl transition-all transform hover:scale-105 border border-gray-100"
+          <button
+            className="bg-white p-6 rounded-lg shadow hover:shadow-lg transition flex items-center gap-4"
             onClick={() => setShowJoinModal(true)}
           >
-            <div className="flex items-start gap-4">
-              <div className="p-4 bg-linear-to-br from-green-500 to-emerald-600 rounded-xl">
-                <MdLogin className="w-8 h-8 text-white" />
-              </div>
-              <div className="flex-1">
-                <h2 className="text-2xl font-bold text-gray-800 mb-2">Join Event</h2>
-                <p className="text-gray-600">
-                  Enter an event code to join and collaborate with others
-                </p>
-              </div>
+            <div className="p-3 bg-green-500 text-white rounded-lg">
+              <MdLogin className="w-6 h-6" />
             </div>
-          </div>
+            <div className="text-left">
+              <h2 className="text-lg font-bold text-gray-800">Join Event</h2>
+              <p className="text-sm text-gray-600">Enter event code</p>
+            </div>
+          </button>
         </div>
 
-        {/* Organizer Events */}
-        <div className="mb-10">
-          <div className="flex items-center gap-3 mb-5">
-            <MdEvent className="w-6 h-6 text-blue-600" />
-            <h2 className="text-2xl font-bold text-gray-800">Your Created Events</h2>
-            <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-semibold">
+        {/* Created Events */}
+        <div className="mb-8">
+          <div className="flex items-center gap-2 mb-4">
+            <MdEvent className="w-5 h-5 text-blue-600" />
+            <h2 className="text-xl font-bold text-gray-800">Your Created Events</h2>
+            <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-semibold">
               {organizerEvents.length}
             </span>
           </div>
 
           {organizerEvents.length === 0 ? (
-            <div className="bg-white rounded-xl p-8 text-center border-2 border-dashed border-gray-300">
-              <p className="text-gray-500">No events created yet. Create your first event to get started!</p>
+            <div className="bg-white rounded-lg p-8 text-center border-2 border-dashed border-gray-300">
+              <p className="text-gray-500">No events created yet</p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {organizerEvents.map((ev) => (
                 <div
                   key={ev._id}
-                  className="bg-white rounded-xl shadow-md hover:shadow-xl transition-all cursor-pointer border border-gray-200 overflow-hidden group relative"
+                  className="bg-white rounded-lg shadow hover:shadow-lg transition cursor-pointer overflow-hidden group"
                   onClick={() => navigate(`/event/${ev._id}`)}
                 >
-                  <div className="absolute top-3 right-3 z-10">
+                  <div className="h-2 bg-blue-500"></div>
+                  <div className="p-5 relative">
                     <button
-                      className="p-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-all opacity-0 group-hover:opacity-100 transform scale-90 group-hover:scale-100"
+                      className="absolute top-3 right-3 p-2 text-red-600 hover:bg-red-50 rounded-lg opacity-0 group-hover:opacity-100 transition"
                       onClick={(e) => {
                         e.stopPropagation();
                         deleteEvent(ev._id);
                       }}
-                      title="Delete Event"
                     >
-                      <MdDelete size={20} />
+                      <MdDelete size={18} />
                     </button>
-                  </div>
 
-                  <div className="h-3 bg-linear-to-r from-blue-500 to-purple-600"></div>
-                  
-                  <div className="p-6">
-                    <h3 className="text-xl font-bold text-gray-800 mb-2 pr-8">{ev.eventName}</h3>
-                    <div className="flex items-center gap-2">
-                      <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-semibold">
+                    <h3 className="text-lg font-bold text-gray-800 mb-3 pr-8">{ev.eventName}</h3>
+                    <div className="flex gap-2">
+                      <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs font-medium">
                         Organizer
                       </span>
                       {ev.isFinished && (
-                        <span className="px-3 py-1 bg-gray-100 text-gray-600 rounded-full text-xs font-semibold">
+                        <span className="px-2 py-1 bg-gray-100 text-gray-600 rounded text-xs font-medium">
                           Finished
                         </span>
                       )}
@@ -218,38 +203,37 @@ export default function Dashboard() {
           )}
         </div>
 
-        {/* Member Events */}
+        {/* Joined Events */}
         <div>
-          <div className="flex items-center gap-3 mb-5">
-            <MdGroup className="w-6 h-6 text-green-600" />
-            <h2 className="text-2xl font-bold text-gray-800">Events You Joined</h2>
-            <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-semibold">
+          <div className="flex items-center gap-2 mb-4">
+            <MdGroup className="w-5 h-5 text-green-600" />
+            <h2 className="text-xl font-bold text-gray-800">Events You Joined</h2>
+            <span className="px-2 py-1 bg-green-100 text-green-700 rounded-full text-xs font-semibold">
               {memberEvents.length}
             </span>
           </div>
 
           {memberEvents.length === 0 ? (
-            <div className="bg-white rounded-xl p-8 text-center border-2 border-dashed border-gray-300">
-              <p className="text-gray-500">No joined events yet. Use an event code to join a team!</p>
+            <div className="bg-white rounded-lg p-8 text-center border-2 border-dashed border-gray-300">
+              <p className="text-gray-500">No joined events yet</p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {memberEvents.map((ev) => (
                 <div
                   key={ev._id}
-                  className="bg-white rounded-xl shadow-md hover:shadow-xl transition-all cursor-pointer border border-gray-200 overflow-hidden"
+                  className="bg-white rounded-lg shadow hover:shadow-lg transition cursor-pointer overflow-hidden"
                   onClick={() => navigate(`/event/${ev._id}`)}
                 >
-                  <div className="h-3 bg-linear-to-r from-green-500 to-emerald-600"></div>
-                  
-                  <div className="p-6">
-                    <h3 className="text-xl font-bold text-gray-800 mb-2">{ev.eventName}</h3>
-                    <div className="flex items-center gap-2">
-                      <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-semibold">
+                  <div className="h-2 bg-green-500"></div>
+                  <div className="p-5">
+                    <h3 className="text-lg font-bold text-gray-800 mb-3">{ev.eventName}</h3>
+                    <div className="flex gap-2">
+                      <span className="px-2 py-1 bg-green-100 text-green-700 rounded text-xs font-medium">
                         Member
                       </span>
                       {ev.isFinished && (
-                        <span className="px-3 py-1 bg-gray-100 text-gray-600 rounded-full text-xs font-semibold">
+                        <span className="px-2 py-1 bg-gray-100 text-gray-600 rounded text-xs font-medium">
                           Finished
                         </span>
                       )}
@@ -262,123 +246,106 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* CREATE EVENT MODAL */}
+      {/* Create Modal */}
       {showCreateModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 backdrop-blur-sm p-4">
-          <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl p-6">
-            <h2 className="text-2xl font-bold text-gray-800 mb-6">Create New Event</h2>
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4">
+          <div className="bg-white w-full max-w-md rounded-lg p-6">
+            <h2 className="text-xl font-bold text-gray-800 mb-4">Create New Event</h2>
 
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Event Name
-                </label>
-                <input
-                  type="text"
-                  placeholder="Enter event name"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition"
-                  value={eventName}
-                  onChange={(e) => setEventName(e.target.value)}
-                />
-              </div>
+            <input
+              type="text"
+              placeholder="Enter event name"
+              className="w-full px-4 py-3 border rounded-lg mb-4 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              value={eventName}
+              onChange={(e) => setEventName(e.target.value)}
+            />
 
-              <div className="flex gap-3 pt-4">
-                <button
-                  className="flex-1 bg-linear-to-r from-blue-600 to-purple-600 text-white py-3 rounded-lg font-semibold hover:from-blue-700 hover:to-purple-700 transition-all transform hover:scale-105"
-                  onClick={createEvent}
-                >
-                  Create Event
-                </button>
-                <button
-                  className="flex-1 bg-gray-200 text-gray-700 py-3 rounded-lg font-semibold hover:bg-gray-300 transition-all"
-                  onClick={() => setShowCreateModal(false)}
-                >
-                  Cancel
-                </button>
-              </div>
+            <div className="flex gap-3">
+              <button
+                className="flex-1 bg-blue-500 text-white py-2 rounded-lg hover:bg-blue-600"
+                onClick={createEvent}
+              >
+                Create
+              </button>
+              <button
+                className="flex-1 bg-gray-200 text-gray-700 py-2 rounded-lg hover:bg-gray-300"
+                onClick={() => setShowCreateModal(false)}
+              >
+                Cancel
+              </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* JOIN EVENT MODAL */}
+      {/* Join Modal */}
       {showJoinModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 backdrop-blur-sm p-4">
-          <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl p-6">
-            <h2 className="text-2xl font-bold text-gray-800 mb-6">Join Event</h2>
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4">
+          <div className="bg-white w-full max-w-md rounded-lg p-6">
+            <h2 className="text-xl font-bold text-gray-800 mb-4">Join Event</h2>
 
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Event Code
-                </label>
-                <input
-                  type="text"
-                  placeholder="Enter 6-digit event code"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none transition uppercase tracking-widest text-center text-xl font-bold"
-                  value={joinCode}
-                  onChange={(e) => setJoinCode(e.target.value)}
-                  maxLength={6}
-                />
-              </div>
+            <input
+              type="text"
+              placeholder="Enter 6-digit code"
+              className="w-full px-4 py-3 border rounded-lg mb-4 text-center text-xl font-bold uppercase tracking-widest focus:outline-none focus:ring-2 focus:ring-green-500"
+              value={joinCode}
+              onChange={(e) => setJoinCode(e.target.value)}
+              maxLength={6}
+            />
 
-              <div className="flex gap-3 pt-4">
-                <button
-                  className="flex-1 bg-linear-to-r from-green-600 to-emerald-600 text-white py-3 rounded-lg font-semibold hover:from-green-700 hover:to-emerald-700 transition-all transform hover:scale-105"
-                  onClick={joinEvent}
-                >
-                  Join Event
-                </button>
-                <button
-                  className="flex-1 bg-gray-200 text-gray-700 py-3 rounded-lg font-semibold hover:bg-gray-300 transition-all"
-                  onClick={() => setShowJoinModal(false)}
-                >
-                  Cancel
-                </button>
-              </div>
+            <div className="flex gap-3">
+              <button
+                className="flex-1 bg-green-500 text-white py-2 rounded-lg hover:bg-green-600"
+                onClick={joinEvent}
+              >
+                Join
+              </button>
+              <button
+                className="flex-1 bg-gray-200 text-gray-700 py-2 rounded-lg hover:bg-gray-300"
+                onClick={() => setShowJoinModal(false)}
+              >
+                Cancel
+              </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* EVENT CODE MODAL (AFTER CREATION) */}
+      {/* Event Code Modal */}
       {createdEventCode && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 backdrop-blur-sm p-4">
-          <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl p-8 text-center">
-            <div className="mb-6">
-              <div className="w-16 h-16 bg-linear-to-br from-green-400 to-emerald-500 rounded-full flex items-center justify-center mx-auto mb-4">
-                <MdEvent className="w-8 h-8 text-white" />
-              </div>
-              <h2 className="text-2xl font-bold text-gray-800 mb-2">Event Created!</h2>
-              <p className="text-gray-600">Share this code with your team members</p>
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4">
+          <div className="bg-white w-full max-w-md rounded-lg p-8 text-center">
+            <div className="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-4">
+              <MdEvent className="w-8 h-8 text-white" />
             </div>
 
-            <div className="bg-linear-to-r from-blue-50 to-purple-50 border-2 border-blue-200 rounded-xl p-6 mb-6">
-              <p className="text-sm text-gray-600 mb-2">Event Code</p>
+            <h2 className="text-2xl font-bold text-gray-800 mb-2">Event Created!</h2>
+            <p className="text-gray-600 mb-6">Share this code with your team</p>
+
+            <div className="bg-blue-50 border-2 border-blue-200 rounded-lg p-6 mb-6">
+              <p className="text-xs text-gray-600 mb-2">EVENT CODE</p>
               <div className="text-4xl font-bold text-blue-600 tracking-widest">
                 {createdEventCode}
               </div>
             </div>
 
-            <div className="space-y-3">
-              <button
-                className="w-full flex items-center justify-center gap-2 bg-linear-to-r from-blue-600 to-purple-600 text-white py-3 rounded-lg font-semibold hover:from-blue-700 hover:to-purple-700 transition-all transform hover:scale-105"
-                onClick={() => {
-                  navigator.clipboard.writeText(createdEventCode);
-                  toast.info("Code copied!");
-                }}
-              >
-                <MdContentCopy className="w-5 h-5" />
-                Copy Code
-              </button>
+            <button
+              className="w-full flex items-center justify-center gap-2 bg-blue-500 text-white py-3 rounded-lg hover:bg-blue-600 mb-3"
+              onClick={() => {
+                navigator.clipboard.writeText(createdEventCode);
+                toast.info("Code copied!");
+              }}
+            >
+              <MdContentCopy className="w-5 h-5" />
+              Copy Code
+            </button>
 
-              <button
-                className="w-full bg-gray-200 text-gray-700 py-3 rounded-lg font-semibold hover:bg-gray-300 transition-all"
-                onClick={() => setCreatedEventCode("")}
-              >
-                Close
-              </button>
-            </div>
+            <button
+              className="w-full bg-gray-200 text-gray-700 py-3 rounded-lg hover:bg-gray-300"
+              onClick={() => setCreatedEventCode("")}
+            >
+              Close
+            </button>
           </div>
         </div>
       )}
