@@ -31,7 +31,7 @@ export default function EventPage() {
 
   // Load event details
   const loadEvent = async () => {
-    const res = await axios.get(`http://localhost:5000/event/${eventId}`, {
+    const res = await axios.get(`https://collaborativ-event-management-3.onrender.com/event/${eventId}`, {
       headers: {
         Authorization: `Bearer ${localStorage.getItem("token")}`,
       },
@@ -99,7 +99,7 @@ export default function EventPage() {
     }
 
     const res = await axios.post(
-      `http://localhost:5000/event/${eventId}/tasks`,
+      `https://collaborativ-event-management-3.onrender.com/event/${eventId}/tasks`,
       {
         title: taskTitle,
         description: taskDesc,
@@ -126,7 +126,7 @@ export default function EventPage() {
 
   const updateStatus = async (taskId, newStatus) => {
     const res = await axios.patch(
-      `http://localhost:5000/event/${eventId}/tasks/${taskId}/status`,
+      `https://collaborativ-event-management-3.onrender.com/event/${eventId}/tasks/${taskId}/status`,
       { status: newStatus },
       {
         headers: {
@@ -148,7 +148,7 @@ export default function EventPage() {
     }
 
     const res = await axios.delete(
-      `http://localhost:5000/event/${eventId}/tasks/${taskId}`,
+      `https://collaborativ-event-management-3.onrender.com/event/${eventId}/tasks/${taskId}`,
       {
         headers: {
           Authorization: `Bearer ${localStorage.getItem("token")}`,
@@ -170,7 +170,7 @@ export default function EventPage() {
     }
 
     const res = await axios. post(
-      `http://localhost:5000/event/${eventId}/finish`,
+      `https://collaborativ-event-management-3.onrender.com/event/${eventId}/finish`,
       {},
       {
         headers: {
