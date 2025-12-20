@@ -18,7 +18,7 @@ export default function Signup() {
 
   const signup = async () => {
     try {
-      const res = await axios.post("http://localhost:5000/auth/signup", form);
+      const res = await axios.post("https://collaborativ-event-management-3.onrender.com/auth/signup", form);
 
       if (res.data.message) {
         toast.success(res.data.message);
