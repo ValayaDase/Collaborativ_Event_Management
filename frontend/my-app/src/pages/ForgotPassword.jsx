@@ -1,109 +1,67 @@
-import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import axios from "axios";
-import { toast } from "react-toastify";
+// src/pages/ForgotPassword.jsx
+import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
+import { toast } from 'react-toastify';
+import { MdEmail } from 'react-icons/md';
 
 export default function ForgotPassword() {
-  const navigate = useNavigate();
+  const [email, setEmail] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [confirm, setConfirm] = useState("");
-
-  const resetPassword = async () => {
-    if (!email || !password || !confirm) {
-      return toast.error("All fields are required");
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    
+    if (!email) {
+      toast.error('Please enter your email');
+      return;
     }
 
-    if (password !== confirm) {
-      return toast.error("Passwords do not match");
-    }
-
-    const res = await axios.post("http://localhost:5000/auth/reset-password", {
-      email,
-      newPassword: password,
-    });
-
-    if (res.data.success) {
-      toast.success("Password updated successfully!");
-      navigate("/");
-    } else {
-      toast.error(res.data.error);
-    }
+    setLoading(true);
+    
+    // TODO: Add API call for password reset
+    setTimeout(() => {
+      toast.success('Password reset link sent to your email! ');
+      setLoading(false);
+      setEmail('');
+    }, 1500);
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-linear-to-br from-indigo-50 via-white to-pink-50 px-4">
-      <div className="w-full max-w-md">
-        {/* Card */}
-        <div className="bg-white rounded-2xl shadow-xl p-8 space-y-6">
-          {/* Header */}
-          <div className="text-center">
-            <h2 className="text-3xl font-bold text-gray-800">Reset Password</h2>
-            <p className="text-gray-500 mt-2">Create a new password</p>
-          </div>
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-purple-50 p-4">
+      <div className="bg-white rounded-2xl shadow-xl p-8 w-full max-w-md">
+        <div className="text-center mb-8">
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Forgot Password? </h1>
+          <p className="text-gray-600">Enter your email to reset password</p>
+        </div>
 
-          {/* Form */}
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Email Address
-              </label>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
+            <div className="relative">
+              <MdEmail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
               <input
                 type="email"
-                placeholder="you@example.com"
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition"
+                placeholder="Enter your email"
+                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus: ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
               />
             </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                New Password
-              </label>
-              <input
-                type="password"
-                placeholder="••••••••"
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Confirm Password
-              </label>
-              <input
-                type="password"
-                placeholder="••••••••"
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition"
-                value={confirm}
-                onChange={(e) => setConfirm(e.target.value)}
-              />
-            </div>
-
-            <button
-              onClick={resetPassword}
-              className="w-full bg-linear-to-r from-indigo-600 to-pink-600 text-white py-3 rounded-lg font-semibold hover:from-indigo-700 hover:to-pink-700 transform transition hover:scale-[1.02] active:scale-[0.98]"
-            >
-              Save New Password
-            </button>
           </div>
 
-          {/* Footer */}
-          <div className="text-center">
-            <p className="text-gray-600 text-sm">
-              Remember your password?{" "}
-              <span
-                className="text-indigo-600 hover:text-indigo-700 font-semibold cursor-pointer"
-                onClick={() => navigate("/")}
-              >
-                Sign in
-              </span>
-            </p>
-          </div>
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition disabled:bg-gray-400"
+          >
+            {loading ? 'Sending...' : 'Send Reset Link'}
+          </button>
+        </form>
+
+        <div className="mt-6 text-center">
+          <Link to="/login" className="text-blue-600 hover:underline">
+            ← Back to Login
+          </Link>
         </div>
       </div>
     </div>

@@ -1,107 +1,115 @@
-import axios from "axios";
-import React, { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { toast } from "react-toastify";
+// src/pages/Login.jsx
+import React, { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import axios from 'axios';
+import { toast } from 'react-toastify';
+import { MdEmail, MdLock, MdVisibility, MdVisibilityOff } from 'react-icons/md';
+import { API_URL } from '../config/api';
 
 export default function Login() {
   const navigate = useNavigate();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
 
-  const [form, setForm] = useState({
-    email: "",
-    password: ""
-  });
+  const handleSubmit = async (e) => {
+    e.preventDefault();
 
-  //Agar token already present, to login screen show mat karo.
-  useEffect(() => {
-    if (localStorage.getItem("token")) {
-      navigate("/dashboard");
+    if (!email || !password) {
+      toast.error('Please fill all fields');
+      return;
     }
-  }, []);
 
-  const handleChange = (e) =>
-    setForm({ ...form, [e.target.name]: e.target.value });
+    setLoading(true);
 
-  const login = async () => {
-    const res = await axios.post("http://localhost:5000/auth/login", form);
+    try {
+      const res = await axios.post(`${API_URL}/auth/login`, { email, password });
 
-    if (res.data.token) {
-      localStorage.setItem("token", res.data.token);
-      localStorage.setItem("userId", res.data.user._id);
-      toast.success("Login successful!");
-      navigate("/dashboard");
-    } else {
-      toast.error(res.data.error);
+      if (res.data.success) {
+        localStorage.setItem('token', res.data.token);
+        localStorage.setItem('userId', res.data.userId);
+        localStorage.setItem('username', res.data.username);
+        toast.success('Login successful!');
+        navigate('/dashboard');
+      } else {
+        toast.error(res.data. error);
+      }
+    } catch (error) {
+      toast.error('Login failed');
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-linear-to-br from-blue-50 via-white to-purple-50">
-      <div className="w-full max-w-md">
-        {/* Card */}
-        <div className="bg-white rounded-2xl shadow-xl p-8 space-y-6">
-          {/* Header */}
-          <div className="text-center">
-            <h2 className="text-3xl font-bold text-gray-800">Welcome Back</h2>
-            <p className="text-gray-500 mt-2">Sign in to continue</p>
-          </div>
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-purple-50 p-4">
+      <div className="bg-white rounded-2xl shadow-xl p-8 w-full max-w-md">
+        <div className="text-center mb-8">
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Welcome Back</h1>
+          <p className="text-gray-600">Login to your account</p>
+        </div>
 
-          {/* Form */}
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Email
-              </label>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
+            <div className="relative">
+              <MdEmail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
               <input
-                name="email"
                 type="email"
-                placeholder="you@example.com"
-                onChange={handleChange}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition"
+                placeholder="Enter your email"
+                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
               />
             </div>
+          </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Password
-              </label>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Password</label>
+            <div className="relative">
+              <MdLock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
               <input
-                name="password"
-                type="password"
-                placeholder="••••••••"
-                onChange={handleChange}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition"
+                type={showPassword ? 'text' : 'password'}
+                placeholder="Enter your password"
+                className="w-full pl-10 pr-12 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
               />
-            </div>
-
-            <div className="text-right">
-              <Link
-                to="/forgot"
-                className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2"
               >
-                Forgot password?
-              </Link>
+                {showPassword ? (
+                  <MdVisibilityOff className="w-5 h-5 text-gray-400" />
+                ) : (
+                  <MdVisibility className="w-5 h-5 text-gray-400" />
+                )}
+              </button>
             </div>
-
-            <button
-              onClick={login}
-              className="w-full bg-linear-to-r from-blue-600 to-purple-600 text-white py-3 rounded-lg font-semibold hover:from-blue-700 hover:to-purple-700 transform transition hover:scale-[1.02] active:scale-[0.98]"
-            >
-              Sign In
-            </button>
           </div>
 
-          {/* Footer */}
-          <div className="text-center">
-            <p className="text-gray-600 text-sm">
-              Don't have an account?{" "}
-              <Link
-                to="/signup"
-                className="text-blue-600 hover:text-blue-700 font-semibold"
-              >
-                Sign up
-              </Link>
-            </p>
-          </div>
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition disabled:bg-gray-400"
+          >
+            {loading ? 'Loading...' : 'Login'}
+          </button>
+        </form>
+
+        <div className="mt-6 text-center">
+          <Link to="/forgot-password" className="text-sm text-blue-600 hover: underline">
+            Forgot Password?
+          </Link>
+        </div>
+
+        <div className="mt-4 text-center">
+          <span className="text-gray-600">Don't have an account?  </span>
+          <Link to="/signup" className="text-blue-600 font-semibold hover:underline">
+            Sign Up
+          </Link>
         </div>
       </div>
     </div>

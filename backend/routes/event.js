@@ -1,3 +1,4 @@
+// backend/routes/event. js
 import express from "express";
 import crypto from "crypto";
 import { Event } from "../models/Event.js";
@@ -19,12 +20,12 @@ router.post("/create", auth, async (req, res) => {
     const event = await Event.create({
       eventName,
       eventCode,
-      organizer:  userId,
-      members: [userId]
+      organizer: userId,
+      members:  [userId]
     });
 
     await User.findByIdAndUpdate(userId, {
-      $push:  { createdEvents: event._id, joinedEvents: event._id }
+      $push: { createdEvents: event._id, joinedEvents: event._id }
     });
 
     return res.json({
@@ -39,20 +40,20 @@ router.post("/create", auth, async (req, res) => {
 });
 
 // ---------- DELETE EVENT ----------
-router. delete("/:id",auth,async(req,res)=>{
-  try{
+router. delete("/:id", auth, async (req, res) => {
+  try {
     const eventId = req.params.id;
     const userId = req.userId;
 
-    const event = await Event.findById(eventId);
-    if(!event) return res.json({success:false,error:"Event not found"});
+    const event = await Event. findById(eventId);
+    if (!event) return res.json({ success: false, error: "Event not found" });
 
-    if(String(event.organizer)!==String(userId)){
-      return res.json({success:false,error:"Only organizer can delete event"});
+    if (String(event.organizer) !== String(userId)) {
+      return res.json({ success: false, error: "Only organizer can delete event" });
     }
 
     await User.updateMany(
-      {joinedEvents: eventId },
+      { joinedEvents: eventId },
       { $pull: { joinedEvents: eventId } }
     );
 
@@ -64,22 +65,21 @@ router. delete("/:id",auth,async(req,res)=>{
     await Message.deleteMany({ eventId });
     await Event.findByIdAndDelete(eventId);
 
-    return res.json({success:true,message:"Event deleted successfully"});
-  }
-  catch(err){
-    return res.json({success:false,error:err.message});
+    return res.json({ success: true, message: "Event deleted successfully" });
+  } catch (err) {
+    return res.json({ success: false, error: err. message });
   }
 });
 
 // ---------- JOIN EVENT ----------
-router. post("/join", auth, async (req, res) => {
+router.post("/join", auth, async (req, res) => {
   try {
     const { eventCode } = req.body;
     const userId = req.userId;
 
-    const event = await Event.findOne({ eventCode });
+    const event = await Event. findOne({ eventCode });
 
-    if (!event) return res.json({ success: false, error:  "Invalid event code" });
+    if (!event) return res.json({ success: false, error: "Invalid event code" });
 
     if (event.members.includes(userId)) {
       return res. json({ success: true, message:  "Already joined", event });
@@ -89,7 +89,7 @@ router. post("/join", auth, async (req, res) => {
     await event.save();
 
     await User.findByIdAndUpdate(userId, {
-      $push: { joinedEvents:  event._id }
+      $push: { joinedEvents: event._id }
     });
 
     const io = getIO();
@@ -97,7 +97,7 @@ router. post("/join", auth, async (req, res) => {
 
     res.json({ success: true, message: "Joined event", event });
   } catch (err) {
-    res.json({ success: false, error: err.message });
+    res.json({ success: false, error: err. message });
   }
 });
 
@@ -124,45 +124,68 @@ router.get("/user-events", auth, async (req, res) => {
 // ---------- GET SINGLE EVENT DETAILS ----------
 router.get("/:id", auth, async (req, res) => {
   try {
-    const eventId = req.params.id;
+    const eventId = req.params. id;
 
     const event = await Event.findById(eventId)
       .populate("organizer", "username email")
       .populate("members", "username email")
-      .populate("tasks.assignedTo", "username email");
+      .populate("tasks.assignedTo", "username email")
+      .populate("tasks.createdBy", "username email"); // ✅ POPULATE createdBy
 
     if (!event) return res.json({ success: false, error: "Event not found" });
 
     res.json({ success: true, event });
   } catch (err) {
-    res.json({ success: false, error:  err.message });
+    res.json({ success: false, error: err.message });
   }
 });
 
-// ---------- ASSIGN TASK (ORGANIZER ONLY) ----------
+// ---------- CREATE/ASSIGN TASK (ALL MEMBERS CAN CREATE) ----------
 router.post("/:id/tasks", auth, async (req, res) => {
   try {
     const eventId = req.params.id;
-    const userId = req.userId;
+    const userId = req. userId;
     const { title, description, assignedTo } = req.body;
 
     const event = await Event.findById(eventId);
+    if (!event) return res.json({ success: false, error: "Event not found" });
 
-    if (!event) return res.json({ success: false, error:  "Event not found" });
-
-    if (event.organizer.toString() !== userId.toString()) {
-      return res.json({ success: false, error: "Only organizer can assign tasks" });
+    // ✅ CHECK: User must be a member of this event
+    const isMember = event.members.some(m => m.toString() === userId.toString());
+    if (!isMember) {
+      return res.json({ 
+        success: false, 
+        error: "You must be a member of this event to create tasks" 
+      });
     }
 
-    // Add task at the beginning (unshift) so new tasks appear at top
+    // ✅ CHECK: Organizer vs Member permissions
+    const isOrganizer = event.organizer.toString() === userId.toString();
+    
+    // If regular member (not organizer) tries to assign to someone else
+    if (!isOrganizer && assignedTo && assignedTo !== userId) {
+      return res. json({ 
+        success: false, 
+        error: "Members can only create tasks for themselves" 
+      });
+    }
+
+    // ✅ Auto-assign to self if member doesn't provide assignedTo
+    const finalAssignedTo = assignedTo || userId;
+
+    // ✅ Add task with createdBy field
     event.tasks.unshift({
       title,
       description,
-      assignedTo
+      assignedTo: finalAssignedTo,
+      createdBy:  userId // ✅ Track who created the task
     });
 
     await event.save();
+    
+    // ✅ Populate both assignedTo and createdBy
     await event.populate("tasks.assignedTo", "username email");
+    await event.populate("tasks.createdBy", "username email");
 
     const io = getIO();
     io.to(String(eventId)).emit("tasks-updated", event.tasks);
@@ -178,7 +201,7 @@ router.patch("/:eventId/tasks/:taskId/status", auth, async (req, res) => {
   try {
     const { eventId, taskId } = req.params;
     const { status } = req.body;
-    const userId = req.userId;
+    const userId = req. userId;
 
     const event = await Event.findById(eventId);
     if (!event) return res.json({ success: false, error: "Event not found" });
@@ -188,6 +211,7 @@ router.patch("/:eventId/tasks/:taskId/status", auth, async (req, res) => {
 
     const assignedId = String(task.assignedTo);
 
+    // ✅ Only assigned user can update status
     if (assignedId !== String(userId)) {
       return res.json({
         success: false,
@@ -199,15 +223,16 @@ router.patch("/:eventId/tasks/:taskId/status", auth, async (req, res) => {
     await event.save();
 
     const updatedEvent = await Event.findById(eventId)
-      .populate("tasks.assignedTo", "username email");
+      .populate("tasks.assignedTo", "username email")
+      .populate("tasks.createdBy", "username email"); // ✅ POPULATE createdBy
 
     const io = getIO();
     io.to(String(eventId)).emit("tasks-updated", updatedEvent.tasks);
 
     res.json({
       success: true,
-      message:  "Status updated",
-      tasks:  updatedEvent.tasks
+      message: "Status updated",
+      tasks: updatedEvent.tasks
     });
   } catch (err) {
     res.json({ success: false, error: err.message });
@@ -221,9 +246,9 @@ router.delete("/:eventId/tasks/:taskId", auth, async (req, res) => {
     const userId = req.userId;
 
     const event = await Event.findById(eventId);
-    if (!event) return res.status(404).json({ success: false, error: "Event not found" });
+    if (!event) return res.status(404).json({ success: false, error:  "Event not found" });
 
-    // Check if user is organizer
+    // ✅ Check if user is organizer
     if (event.organizer.toString() !== userId.toString()) {
       return res.status(403).json({ 
         success: false, 
@@ -235,8 +260,9 @@ router.delete("/:eventId/tasks/:taskId", auth, async (req, res) => {
     event.tasks.pull(taskId);
     await event.save();
 
-    // Populate and emit updated tasks
+    // ✅ Populate and emit updated tasks
     await event.populate("tasks.assignedTo", "username email");
+    await event.populate("tasks.createdBy", "username email"); // ✅ POPULATE createdBy
 
     const io = getIO();
     io.to(String(eventId)).emit("tasks-updated", event.tasks);
@@ -260,6 +286,7 @@ router.post("/:id/finish", auth, async (req, res) => {
     const event = await Event.findById(eventId);
     if (!event) return res.json({ success: false, error: "Event not found" });
 
+    // ✅ Only organizer can finish event
     if (event.organizer.toString() !== userId.toString()) {
       return res.json({ success: false, error: "Only organizer can finish event" });
     }
@@ -270,9 +297,9 @@ router.post("/:id/finish", auth, async (req, res) => {
     const io = getIO();
     io.to(String(eventId)).emit("event-finished");
 
-    res.json({ success: true, message: "Event finished" });
+    res.json({ success: true, message:  "Event finished" });
   } catch (err) {
-    res.json({ success: false, error: err. message });
+    res.json({ success: false, error: err.message });
   }
 });
 

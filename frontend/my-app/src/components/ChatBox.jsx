@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useRef } from "react";
 import axios from "axios";
-import useSocket from "../hooks/useSocket";
+import { API_URL } from "../config/api";
 import { IoSend, IoChatbubblesOutline } from "react-icons/io5";
 
-export default function ChatBox({ eventId, isOpen, isFinished }) {
-  const socket = useSocket();
+export default function ChatBox({ eventId, socket, isOpen, isFinished }) {
+
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState("");
   const [loading, setLoading] = useState(false);
@@ -15,20 +15,13 @@ export default function ChatBox({ eventId, isOpen, isFinished }) {
   // ... (keep all your useEffect hooks the same)
 
   useEffect(() => {
-    if (!socket || !eventId || !isOpen) return;
-    socket.emit("join-event", eventId);
-    console.log("ChatBox joined event:", eventId);
-    return () => {};
-  }, [socket, eventId, isOpen]);
-
-  useEffect(() => {
     if (!isOpen || !eventId) return;
 
     const loadMessages = async () => {
       setLoading(true);
       try {
         const res = await axios.get(
-          `http://localhost:5000/chat/${eventId}`,
+          `${API_URL}/chat/${eventId}`,
           {
             headers: {
               Authorization: `Bearer ${localStorage.getItem("token")}`,
@@ -75,7 +68,7 @@ export default function ChatBox({ eventId, isOpen, isFinished }) {
 
     try {
       const res = await axios.post(
-        `http://localhost:5000/chat/${eventId}`,
+        `${API_URL}/chat/${eventId}`,
         { text: newMessage },
         {
           headers: {
