@@ -22,6 +22,7 @@ export default function ChatBox({ eventId, socket, isOpen, isFinished }) {
       try {
         const res = await axios.get(
           `${API_URL}/chat/${eventId}`,
+
           {
             headers: {
               Authorization: `Bearer ${localStorage.getItem("token")}`,

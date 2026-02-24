@@ -19,10 +19,12 @@ export default function Dashboard() {
   const [createdEventCode, setCreatedEventCode] = useState('');
 
   const loadEvents = async () => {
+
     try {
       const res = await axios.get(`${API_URL}/event/user-events`, {
         headers: { Authorization:  `Bearer ${localStorage.getItem('token')}` }
       });
+
 
       if (res.data.success) {
         setOrganizerEvents(res.data.organizerEvents || []);
@@ -45,7 +47,7 @@ export default function Dashboard() {
   const completedTasks = allTasks.filter(t => t.status === 'completed').length;
 
   const createEvent = async () => {
-    if (!eventName. trim()) {
+    if (!eventName.trim()) {
       toast.error('Event name is required! ');
       return;
     }
@@ -64,22 +66,51 @@ export default function Dashboard() {
         loadEvents();
       } else {
         toast.error(res.data.error);
+
       }
     } catch (error) {
       toast.error('Failed to create event');
     }
   };
 
+
+  // DELETE EVENT
+  const deleteEvent = async (eventId) => {
+    const res = await axios.delete(`${API_URL}/event/${eventId}`, {
+      headers: {
+        Authorization: `Bearer ${localStorage.getItem("token")}`,
+      },
+    });
+    if (res.data.success) {
+      toast.success("Event deleted successfully!");
+      loadEvents();
+    } else {
+      toast.error(res.data.error);
+    }
+  };
+
+  // JOIN EVENT
   const joinEvent = async () => {
-    if (!joinCode.trim()) {
-      toast.error('Event code is required!');
-      return;
+    const res = await axios.post(
+      `${API_URL}/event/join`,
+      { eventCode: joinCode },
+      {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+      }
+    );
+
+    if (res.data.message) {
+      toast.success(res.data.message);
+    } else {
+      toast.error(res.data.error);
     }
 
     try {
-      const res = await axios. post(
+      const res = await axios.post(
         `${API_URL}/event/join`,
-        { eventCode: joinCode. toUpperCase() },
+        { eventCode: joinCode.toUpperCase() },
         { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }
       );
 
@@ -89,7 +120,7 @@ export default function Dashboard() {
         setJoinCode('');
         loadEvents();
       } else {
-        toast.error(res.data. error);
+        toast.error(res.data.error);
       }
     } catch (error) {
       toast.error('Failed to join event');
@@ -97,7 +128,7 @@ export default function Dashboard() {
   };
 
   const copyCode = () => {
-    navigator. clipboard.writeText(createdEventCode);
+    navigator.clipboard.writeText(createdEventCode);
     toast.success('Code copied! ');
   };
 

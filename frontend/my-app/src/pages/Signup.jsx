@@ -30,7 +30,9 @@ export default function Signup() {
     setLoading(true);
 
     try {
+
       const res = await axios.post(`${API_URL}/auth/signup`, { username, email, password });
+
 
       if (res.data.success) {
         toast.success('Signup successful!');

@@ -32,21 +32,19 @@ export default function EventPage() {
   const currentUserId = localStorage.getItem('userId');
 
   const loadEvent = async () => {
-    try {
-      const res = await axios.get(`${API_URL}/event/${eventId}`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-      });
-      if (res.data.success) {
-        const ev = res.data.event;
-        setEvent(ev);
-        setTasks(ev.tasks);
-        setMembers(ev.members);
-        setOrganizerId(ev.organizer._id);
-        setIsOrganizer(ev.organizer._id === currentUserId);
-      }
-    } catch (error) {
-      toast.error('Failed to load event');
-      navigate('/dashboard');
+    const res = await axios.get(`http://localhost:5000/event/${eventId}`, {
+      headers: {
+        Authorization: `Bearer ${localStorage.getItem("token")}`,
+      },
+    });
+
+    if (res.data.success) {
+      const ev = res.data.event;
+      setEvent(ev);
+      setTasks(ev.tasks);
+      setMembers(ev.members);
+      setOrganizerId(ev.organizer._id);
+      setIsOrganizer(ev.organizer._id === currentUserId);
     }
   };
 
@@ -102,79 +100,93 @@ export default function EventPage() {
       toast.error('Task title is required!');
       return;
     }
-    const finalAssignedTo = isOrganizer ? assignedTo : currentUserId;
-    try {
-      const res = await axios.post(
-        `${API_URL}/event/${eventId}/tasks`,
-        { title: taskTitle, description: taskDesc, assignedTo: finalAssignedTo },
-        { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }
-      );
-      if (res.data.success) {
-        setShowTaskModal(false);
-        setTaskTitle('');
-        setTaskDesc('');
-        setAssignedTo('');
-        setTasks(res.data.tasks);
-        toast.success('Task created successfully!');
-      } else {
-        toast.error(res.data.error);
+
+    const res = await axios.post(
+      `http://localhost:5000/event/${eventId}/tasks`,
+      {
+        title: taskTitle,
+        description: taskDesc,
+        assignedTo,
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
       }
-    } catch (error) {
-      toast.error('Failed to create task');
+    );
+
+    if (res.data.success) {
+      setShowTaskModal(false);
+      setTaskTitle("");
+      setTaskDesc("");
+      setAssignedTo("");
+      setTasks(res.data.tasks);
+      toast.success("Task created successfully!");
+    } else {
+      toast.error(res.data.error);
     }
   };
 
   const updateStatus = async (taskId, newStatus) => {
-    try {
-      const res = await axios.patch(
-        `${API_URL}/event/${eventId}/tasks/${taskId}/status`,
-        { status: newStatus },
-        { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }
-      );
-      if (!res.data.success) {
-        toast.error(res.data.error);
-      } else {
-        toast.success('Status updated!');
+    const res = await axios.patch(
+      `http://localhost:5000/event/${eventId}/tasks/${taskId}/status`,
+      { status: newStatus },
+      {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
       }
-    } catch (error) {
-      toast.error('Failed to update status');
+    );
+
+    if (! res.data.success) {
+      toast.error(res.data.error);
+    } else {
+      toast.success("Task status updated!");
     }
   };
 
   const deleteTask = async (taskId) => {
-    if (!window.confirm('Are you sure you want to delete this task?')) return;
-    try {
-      const res = await axios.delete(
-        `${API_URL}/event/${eventId}/tasks/${taskId}`,
-        { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }
-      );
-      if (res.data.success) {
-        setTasks(res.data.tasks);
-        toast.success('Task deleted!');
-      } else {
-        toast.error(res.data.error);
+    if (! window.confirm("Are you sure you want to delete this task?")) {
+      return;
+    }
+
+    const res = await axios.delete(
+      `http://localhost:5000/event/${eventId}/tasks/${taskId}`,
+      {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
       }
-    } catch (error) {
-      toast.error('Failed to delete task');
+    );
+
+    if (res.data.success) {
+      setTasks(res.data.tasks);
+      toast.success("Task deleted successfully!");
+    } else {
+      toast. error(res.data.error);
     }
   };
 
   const finishEvent = async () => {
-    if (!window.confirm('Are you sure you want to finish this event? This action cannot be undone.')) return;
-    try {
-      const res = await axios.post(
-        `${API_URL}/event/${eventId}/finish`,
-        {},
-        { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }
-      );
-      if (res.data.success) {
-        toast.success('Event finished!');
-        navigate('/dashboard');
-      } else {
-        toast.error(res.data.error);
+    if (!window.confirm("Are you sure you want to finish this event?  This action cannot be undone.")) {
+      return;
+    }
+
+    const res = await axios. post(
+      `http://localhost:5000/event/${eventId}/finish`,
+      {},
+      {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
       }
-    } catch (error) {
-      toast.error('Failed to finish event');
+    );
+
+    if (res.data.success) {
+      toast.success("Event finished successfully!");
+      navigate("/dashboard");
+    } else {
+      toast.error(res.data.error);
     }
   };
 

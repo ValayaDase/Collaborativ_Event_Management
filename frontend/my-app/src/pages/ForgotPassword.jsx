@@ -8,7 +8,7 @@ export default function ForgotPassword() {
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     
     if (!email) {
@@ -16,14 +16,22 @@ export default function ForgotPassword() {
       return;
     }
 
-    setLoading(true);
-    
-    // TODO: Add API call for password reset
-    setTimeout(() => {
-      toast.success('Password reset link sent to your email! ');
-      setLoading(false);
-      setEmail('');
-    }, 1500);
+
+    if (password !== confirm) {
+      return toast.error("Passwords do not match");
+    }
+
+    const res = await axios.post(`${API_URL}/auth/reset-password`, {
+      email,
+      newPassword: password,
+    });
+
+    if (res.data.success) {
+      toast.success("Password updated successfully!");
+      navigate("/");
+    } else {
+      toast.error(res.data.error);
+    }
   };
 
   return (
