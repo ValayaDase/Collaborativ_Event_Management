@@ -8,25 +8,23 @@ import { API_URL } from '../config/api';
 
 export default function Login() {
   const navigate = useNavigate();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
 
-  const [form, setForm] = useState({
-    email: "",
-    password: ""
-  });
+  const handleSubmit = async (e) => {
+    e.preventDefault();
 
-  //Agar token already present, to login screen show mat karo.
-  useEffect(() => {
-    if (localStorage.getItem("token")) {
-      navigate("/dashboard");
+    if (!email || !password) {
+      toast.error('Please fill all fields');
+      return;
     }
-  }, []);
 
-  const handleChange = (e) =>
-    setForm({ ...form, [e.target.name]: e.target.value });
+    setLoading(true);
 
-  const login = async () => {
-    const res = await axios.post("http://localhost:5000/auth/login", form);
-
+    try {
+      const res = await axios.post(`${API_URL}/auth/login`, { email, password });
       if (res.data.success) {
         localStorage.setItem('token', res.data.token);
         localStorage.setItem('userId', res.data.userId);
