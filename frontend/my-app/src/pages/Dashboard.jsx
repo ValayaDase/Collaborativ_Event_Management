@@ -145,34 +145,34 @@ export default function Dashboard() {
   return (
     <Layout>
       {/* Stats */}
-      <div className="grid grid-cols-1 md: grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         <StatsCard
           title="Total Events"
           value={totalEvents}
           icon={MdEvent}
-          bgColor="bg-blue-100"
-          iconColor="text-blue-600"
+          bgColor="bg-slate-100"
+          iconColor="text-slate-800"
         />
         <StatsCard
           title="Team Members"
           value={totalMembers}
           icon={MdPeople}
-          bgColor="bg-purple-100"
-          iconColor="text-purple-600"
+          bgColor="bg-slate-100"
+          iconColor="text-slate-800"
         />
         <StatsCard
           title="Completed Tasks"
           value={completedTasks}
           icon={MdCheckCircle}
-          bgColor="bg-green-100"
-          iconColor="text-green-600"
+          bgColor="bg-black"
+          iconColor="text-white"
         />
         <StatsCard
           title="Total Tasks"
           value={allTasks.length}
           icon={MdTrendingUp}
-          bgColor="bg-orange-100"
-          iconColor="text-orange-600"
+          bgColor="bg-slate-100"
+          iconColor="text-slate-800"
         />
       </div>
 
@@ -180,14 +180,14 @@ export default function Dashboard() {
       <div className="flex gap-4 mb-8">
         <button
           onClick={() => setShowCreateModal(true)}
-          className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition"
+          className="flex items-center gap-2 px-6 py-3 bg-black text-white rounded-lg font-medium hover:bg-slate-800 transition active:scale-[0.98]"
         >
           <MdAdd className="w-5 h-5" />
           Create Event
         </button>
         <button
           onClick={() => setShowJoinModal(true)}
-          className="flex items-center gap-2 px-6 py-3 bg-white text-gray-700 rounded-lg font-semibold hover:bg-gray-100 transition border border-gray-300"
+          className="flex items-center gap-2 px-6 py-3 bg-white text-slate-800 rounded-lg font-medium hover:bg-slate-50 transition border border-slate-300 active:scale-[0.98]"
         >
           <MdLogin className="w-5 h-5" />
           Join Event
@@ -229,15 +229,15 @@ export default function Dashboard() {
 
       {/* CREATE MODAL */}
       {showCreateModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl p-8 w-full max-w-md">
-            {! createdEventCode ? (
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl p-8 w-full max-w-md shadow-xl animate-in fade-in zoom-in duration-200">
+            {!createdEventCode ? (
               <>
-                <h2 className="text-2xl font-bold mb-6">Create New Event</h2>
+                <h2 className="text-2xl font-bold mb-6 text-slate-900">Create New Event</h2>
                 <input
                   type="text"
                   placeholder="Enter event name..."
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg mb-6 focus:ring-2 focus:ring-blue-500 outline-none"
+                  className="w-full px-4 py-3 border border-slate-300 rounded-lg mb-6 focus:ring-1 focus:ring-black focus:border-black outline-none transition"
                   value={eventName}
                   onChange={(e) => setEventName(e.target.value)}
                   onKeyPress={(e) => e.key === 'Enter' && createEvent()}
@@ -245,7 +245,7 @@ export default function Dashboard() {
                 <div className="flex gap-3">
                   <button
                     onClick={createEvent}
-                    className="flex-1 bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700"
+                    className="flex-1 bg-black text-white py-3 rounded-lg font-medium hover:bg-slate-800 transition active:scale-[0.98]"
                   >
                     Create
                   </button>
@@ -254,7 +254,7 @@ export default function Dashboard() {
                       setShowCreateModal(false);
                       setCreatedEventCode('');
                     }}
-                    className="flex-1 bg-gray-200 text-gray-700 py-3 rounded-lg font-semibold hover:bg-gray-300"
+                    className="flex-1 bg-slate-100 text-slate-700 py-3 rounded-lg font-medium hover:bg-slate-200 transition"
                   >
                     Cancel
                   </button>
@@ -265,14 +265,14 @@ export default function Dashboard() {
                 <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
                   <MdCheckCircle className="w-10 h-10 text-green-600" />
                 </div>
-                <h2 className="text-2xl font-bold mb-2">Event Created!</h2>
-                <p className="text-gray-600 mb-6">Share this code with team members</p>
-                <div className="bg-gray-100 rounded-lg p-6 mb-6">
-                  <p className="text-sm text-gray-600 mb-2">Event Code</p>
-                  <p className="text-3xl font-bold text-blue-600">{createdEventCode}</p>
+                <h2 className="text-2xl font-bold mb-2 text-slate-900">Event Created!</h2>
+                <p className="text-slate-600 mb-6">Share this code with team members</p>
+                <div className="bg-slate-50 border border-slate-200 rounded-lg p-6 mb-6">
+                  <p className="text-sm text-slate-600 mb-2 uppercase tracking-widest font-semibold">Event Code</p>
+                  <p className="text-3xl font-bold text-black tracking-widest">{createdEventCode}</p>
                   <button
                     onClick={copyCode}
-                    className="mt-4 px-4 py-2 bg-white rounded-lg text-sm font-semibold hover:bg-gray-50"
+                    className="mt-4 px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm font-medium hover:bg-slate-100 transition"
                   >
                     📋 Copy Code
                   </button>
@@ -282,7 +282,7 @@ export default function Dashboard() {
                     setShowCreateModal(false);
                     setCreatedEventCode('');
                   }}
-                  className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700"
+                  className="w-full bg-black text-white py-3 rounded-lg font-medium hover:bg-slate-800 transition active:scale-[0.98]"
                 >
                   Done
                 </button>
@@ -294,13 +294,13 @@ export default function Dashboard() {
 
       {/* JOIN MODAL */}
       {showJoinModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl p-8 w-full max-w-md">
-            <h2 className="text-2xl font-bold mb-6">Join Event</h2>
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl p-8 w-full max-w-md shadow-xl animate-in fade-in zoom-in duration-200">
+            <h2 className="text-2xl font-bold mb-6 text-slate-900">Join Event</h2>
             <input
               type="text"
               placeholder="Enter event code..."
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg mb-6 focus:ring-2 focus:ring-blue-500 outline-none uppercase text-center font-bold"
+              className="w-full px-4 py-3 border border-slate-300 rounded-lg mb-6 focus:ring-1 focus:ring-black focus:border-black outline-none uppercase text-center font-bold tracking-widest transition"
               value={joinCode}
               onChange={(e) => setJoinCode(e.target. value. toUpperCase())}
               onKeyPress={(e) => e.key === 'Enter' && joinEvent()}
@@ -309,13 +309,13 @@ export default function Dashboard() {
             <div className="flex gap-3">
               <button
                 onClick={joinEvent}
-                className="flex-1 bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700"
+                className="flex-1 bg-black text-white py-3 rounded-lg font-medium hover:bg-slate-800 transition active:scale-[0.98]"
               >
                 Join
               </button>
               <button
                 onClick={() => setShowJoinModal(false)}
-                className="flex-1 bg-gray-200 text-gray-700 py-3 rounded-lg font-semibold hover:bg-gray-300"
+                className="flex-1 bg-slate-100 text-slate-700 py-3 rounded-lg font-medium hover:bg-slate-200 transition"
               >
                 Cancel
               </button>

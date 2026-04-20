@@ -3,11 +3,11 @@ import cors from "cors";
 import http from "http";
 import dotenv from "dotenv";
 import { connectDB } from "./config/db.js";
-
+import { initSocket } from "./socket.js";
 import authRoutes from "./routes/auth.js";
 import eventRoutes from "./routes/event.js";
 import chatRoutes from "./routes/chat.js";
-import { initSocket } from "./socket.js";
+
 
 dotenv.config();
 connectDB();

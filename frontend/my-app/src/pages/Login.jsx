@@ -1,115 +1,102 @@
-// src/pages/Login.jsx
-import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import axios from 'axios';
-import { toast } from 'react-toastify';
-import { MdEmail, MdLock, MdVisibility, MdVisibilityOff } from 'react-icons/md';
-import { API_URL } from '../config/api';
+import axios from "axios";
+import React, { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { IoMailOutline, IoLockClosedOutline, IoArrowForward } from "react-icons/io5";
 
 export default function Login() {
   const navigate = useNavigate();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
+
+  const [form, setForm] = useState({
+    email: "",
+    password: ""
+  });
   const [loading, setLoading] = useState(false);
 
-  const handleSubmit = async (e) => {
+  const handleChange = (e) =>
+    setForm({ ...form, [e.target.name]: e.target.value });
+
+  const login = async (e) => {
     e.preventDefault();
-
-    if (!email || !password) {
-      toast.error('Please fill all fields');
-      return;
-    }
-
+    if (!form.email || !form.password) return alert("Please fill all fields");
     setLoading(true);
-
     try {
-      const res = await axios.post(`${API_URL}/auth/login`, { email, password });
-      if (res.data.success) {
-        localStorage.setItem('token', res.data.token);
-        localStorage.setItem('userId', res.data.userId);
-        localStorage.setItem('username', res.data.username);
-        toast.success('Login successful!');
-        navigate('/dashboard');
+      const res = await axios.post("http://localhost:5000/auth/login", form);
+
+      if (res.data.token) {
+        localStorage.setItem("token", res.data.token);
+        localStorage.setItem("userId", res.data.user._id);
+        navigate("/dashboard");
       } else {
-        toast.error(res.data. error);
+        alert(res.data.error);
       }
-    } catch (error) {
-      toast.error('Login failed');
+    } catch (err) {
+      alert("Invalid credentials or server error");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-purple-50 p-4">
-      <div className="bg-white rounded-2xl shadow-xl p-8 w-full max-w-md">
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Welcome Back</h1>
-          <p className="text-gray-600">Login to your account</p>
+    <div className="min-h-screen bg-white flex items-center justify-center p-4 font-sans">
+      <div className="w-full max-w-md">
+        <div className="text-center mb-10">
+          <div className="w-12 h-12 bg-black rounded-lg flex items-center justify-center text-white font-bold text-xl mx-auto mb-6">
+            EH
+          </div>
+          <h2 className="text-3xl font-bold text-slate-900 tracking-tight mb-2">Welcome Back</h2>
+          <p className="text-slate-500 text-sm">Sign in to your EventHub workspace</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={login} className="space-y-6">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
+            <label className="block text-xs font-semibold text-slate-900 uppercase tracking-widest mb-2">Email Address</label>
             <div className="relative">
-              <MdEmail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+              <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                <IoMailOutline className="text-slate-400 text-lg" />
+              </div>
               <input
+                name="email"
                 type="email"
-                placeholder="Enter your email"
-                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                placeholder="you@example.com"
+                onChange={handleChange}
+                className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-black focus:border-black transition-all"
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Password</label>
+            <label className="block text-xs font-semibold text-slate-900 uppercase tracking-widest mb-2">Password</label>
             <div className="relative">
-              <MdLock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+              <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                <IoLockClosedOutline className="text-slate-400 text-lg" />
+              </div>
               <input
-                type={showPassword ? 'text' : 'password'}
-                placeholder="Enter your password"
-                className="w-full pl-10 pr-12 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                name="password"
+                type="password"
+                placeholder="••••••••"
+                onChange={handleChange}
+                className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-black focus:border-black transition-all"
               />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2"
-              >
-                {showPassword ? (
-                  <MdVisibilityOff className="w-5 h-5 text-gray-400" />
-                ) : (
-                  <MdVisibility className="w-5 h-5 text-gray-400" />
-                )}
-              </button>
             </div>
           </div>
 
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition disabled:bg-gray-400"
+            className="w-full bg-black text-white py-3.5 font-medium rounded-lg hover:bg-slate-800 transition active:scale-[0.98] flex items-center justify-center gap-2"
           >
-            {loading ? 'Loading...' : 'Login'}
+            {loading ? "Signing in..." : (
+              <>Sign In <IoArrowForward /></>
+            )}
           </button>
         </form>
 
-        <div className="mt-6 text-center">
-          <Link to="/forgot-password" className="text-sm text-blue-600 hover: underline">
-            Forgot Password?
+        <p className="mt-8 text-sm text-center text-slate-500">
+          Don't have an account?{" "}
+          <Link to="/signup" className="text-black font-semibold hover:underline">
+            Sign up
           </Link>
-        </div>
-
-        <div className="mt-4 text-center">
-          <span className="text-gray-600">Don't have an account?  </span>
-          <Link to="/signup" className="text-blue-600 font-semibold hover:underline">
-            Sign Up
-          </Link>
-        </div>
+        </p>
       </div>
     </div>
   );

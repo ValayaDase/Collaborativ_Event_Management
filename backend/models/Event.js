@@ -38,7 +38,15 @@ const eventSchema = new mongoose.Schema(
     isFinished: {
       type: Boolean,
       default: false
-    }
+    },
+    activities: [
+      {
+        action: String,
+        message: String,
+        user: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+        timestamp: { type: Date, default: Date.now }
+      }
+    ]
   },
   { timestamps: true }
 );

@@ -1,10 +1,10 @@
+// src/components/ChatBox.jsx
 import React, { useState, useEffect, useRef } from "react";
 import axios from "axios";
 import { API_URL } from "../config/api";
 import { IoSend, IoChatbubblesOutline } from "react-icons/io5";
 
 export default function ChatBox({ eventId, socket, isOpen, isFinished }) {
-
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState("");
   const [loading, setLoading] = useState(false);
@@ -12,23 +12,16 @@ export default function ChatBox({ eventId, socket, isOpen, isFinished }) {
   const messagesEndRef = useRef(null);
   const currentUserId = localStorage.getItem("userId");
 
-  // ... (keep all your useEffect hooks the same)
-
+  // 1. Load initial messages
   useEffect(() => {
-    if (!isOpen || !eventId) return;
+    if (!eventId) return;
 
     const loadMessages = async () => {
       setLoading(true);
       try {
-        const res = await axios.get(
-          `${API_URL}/chat/${eventId}`,
-
-          {
-            headers: {
-              Authorization: `Bearer ${localStorage.getItem("token")}`,
-            },
-          }
-        );
+        const res = await axios.get(`${API_URL}/chat/${eventId}`, {
+          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+        });
 
         if (res.data.success) {
           setMessages(res.data.messages);
@@ -41,45 +34,43 @@ export default function ChatBox({ eventId, socket, isOpen, isFinished }) {
     };
 
     loadMessages();
-  }, [isOpen, eventId]);
+  }, [eventId]);
 
+  // 2. Handle Real-time Socket Connection safely
   useEffect(() => {
-    if (!socket || !isOpen) return;
+    if (!socket) return;
 
     const handleNewMessage = (message) => {
-      console.log("New message received:", message);
       setMessages((prev) => [...prev, message]);
     };
 
     socket.on("new-message", handleNewMessage);
 
+    // Cleanup prevents duplicate messages firing in React Strict Mode
     return () => {
       socket.off("new-message", handleNewMessage);
     };
-  }, [socket, isOpen]);
+  }, [socket]);
 
+  // 3. Auto-scroll to bottom on new message
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
   const sendMessage = async (e) => {
     e.preventDefault();
+    if (newMessage.trim() === "" || isFinished) return;
 
-    if (newMessage.trim() === "") return;
-
+    // Optimistic UI update could go here, but waiting for DB ensures sync
     try {
       const res = await axios.post(
         `${API_URL}/chat/${eventId}`,
         { text: newMessage },
-        {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
-          },
-        }
+        { headers: { Authorization: `Bearer ${localStorage.getItem("token")}` } }
       );
 
       if (res.data.success) {
-        setNewMessage("");
+        setNewMessage(""); // Clear input on success
       } else {
         alert(res.data.error);
       }
@@ -90,33 +81,26 @@ export default function ChatBox({ eventId, socket, isOpen, isFinished }) {
   };
 
   const formatTime = (timestamp) => {
-    const date = new Date(timestamp);
-    return date.toLocaleTimeString("en-US", {
+    return new Date(timestamp).toLocaleTimeString("en-US", {
       hour: "2-digit",
       minute: "2-digit",
     });
   };
 
   return (
-    <div className="h-full bg-white flex flex-col">
-      {/* HEADER - FIXED */}
-      <div className="bg-linear-to-r from-blue-600 to-purple-600 text-white px-4 py-3 flex items-center gap-2">
-        <IoChatbubblesOutline className="w-6 h-6" />
-        <h3 className="font-semibold">Group Chat</h3>
-      </div>
-
+    <div className="h-full flex flex-col bg-[#F8FAFC]">
+      
       {/* MESSAGES AREA */}
-      <div className="flex-1 overflow-y-auto p-4 bg-gray-50">
+      <div className="flex-1 overflow-y-auto p-4 scrollbar-hide space-y-4">
         {loading ? (
           <div className="flex justify-center items-center h-full">
-            <div className="text-gray-500">Loading messages...</div>
+            <div className="w-8 h-8 border-4 border-slate-200 border-t-slate-900 rounded-full animate-spin"></div>
           </div>
         ) : messages.length === 0 ? (
-          <div className="flex flex-col justify-center items-center h-full text-gray-400">
-            <IoChatbubblesOutline className="w-16 h-16 mb-4 opacity-50" />
-            <p className="text-center">
-              No messages yet. <br />
-              Start the conversation! 👋
+          <div className="flex flex-col justify-center items-center h-full text-slate-400 opacity-60">
+            <IoChatbubblesOutline className="w-12 h-12 mb-3" />
+            <p className="text-sm font-medium text-center">
+              No messages yet.<br />Start the conversation!
             </p>
           </div>
         ) : (
@@ -126,66 +110,60 @@ export default function ChatBox({ eventId, socket, isOpen, isFinished }) {
             return (
               <div
                 key={msg._id}
-                className={`mb-3 flex ${
-                  isOwnMessage ? "justify-end" : "justify-start"
-                }`}
+                className={`flex flex-col ${isOwnMessage ? "items-end" : "items-start"}`}
               >
+                {!isOwnMessage && (
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 ml-1">
+                    {msg.sender.username}
+                  </span>
+                )}
+                
                 <div
-                  className={`max-w-[75%] rounded-lg px-3 py-2 ${
+                  className={`max-w-[85%] px-4 py-2.5 shadow-sm text-sm break-words whitespace-pre-wrap ${
                     isOwnMessage
-                      ? "bg-blue-500 text-white"
-                      : "bg-white border border-gray-200 shadow-sm"
+                      ? "bg-slate-900 text-white rounded-2xl rounded-tr-sm" // Organizer/Own bubble
+                      : "bg-white border border-slate-200 text-slate-800 rounded-2xl rounded-tl-sm" // Other bubble
                   }`}
                 >
-                  {!isOwnMessage && (
-                    <div className="text-xs font-semibold text-blue-600 mb-1">
-                      {msg.sender.username}
-                    </div>
-                  )}
-                  
-                  <div className="text-sm break-word whitespace-pre-wrap">
-                    {msg.text}
-                  </div>
-                  
-                  <div
-                    className={`text-xs mt-1 ${
-                      isOwnMessage ? "text-blue-100" : "text-gray-400"
-                    }`}
-                  >
-                    {formatTime(msg.createdAt)}
-                  </div>
+                  {msg.text}
                 </div>
+                
+                <span className="text-[10px] font-semibold text-slate-400 mt-1 mx-1">
+                  {formatTime(msg.createdAt)}
+                </span>
               </div>
             );
           })
         )}
-
         <div ref={messagesEndRef} />
       </div>
 
       {/* INPUT AREA */}
-      <form
-        onSubmit={sendMessage}
-        className="border-t border-gray-200 p-3 bg-white"
-      >
-        <div className="flex gap-2">
-          <input
-            type="text"
-            value={newMessage}
-            onChange={(e) => setNewMessage(e.target.value)}
-            placeholder="Type a message..."
-            className="flex-1 px-4 py-2 border border-gray-300 rounded-full focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-            maxLength={500}
-          />
-          <button
-            type="submit"
-            className="bg-blue-600 text-white p-3 rounded-full hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
-            disabled={isFinished || newMessage.trim() === ""}
-          >
-            <IoSend className="w-5 h-5" />
-          </button>
-        </div>
-      </form>
+      <div className="p-4 bg-white border-t border-slate-100">
+        {isFinished ? (
+          <div className="text-center p-3 bg-slate-50 text-slate-500 rounded-2xl text-sm font-medium border border-slate-200">
+            This event has ended. Chat is read-only.
+          </div>
+        ) : (
+          <form onSubmit={sendMessage} className="flex gap-2">
+            <input
+              type="text"
+              value={newMessage}
+              onChange={(e) => setNewMessage(e.target.value)}
+              placeholder="Type your message..."
+              maxLength={500}
+              className="flex-1 px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-transparent transition-all text-sm"
+            />
+            <button
+              type="submit"
+              disabled={newMessage.trim() === ""}
+              className="bg-slate-900 text-white p-3 px-4 rounded-2xl hover:bg-black transition-all active:scale-95 disabled:opacity-50 disabled:active:scale-100 disabled:cursor-not-allowed flex items-center justify-center shadow-md shadow-slate-200"
+            >
+              <IoSend className="w-5 h-5 ml-1" />
+            </button>
+          </form>
+        )}
+      </div>
     </div>
   );
 }

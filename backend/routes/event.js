@@ -85,14 +85,19 @@ router.post("/join", auth, async (req, res) => {
       return res. json({ success: true, message:  "Already joined", event });
     }
 
+    const io = getIO();
+
     event.members.push(userId);
+    const user = await User.findById(userId);
+    event.activities.push({action: "join" , message: `${user.username} joined the event` , user: userId })
+    io.to(String(event._id)).emit("activities-updated", event.activities);
     await event.save();
 
     await User.findByIdAndUpdate(userId, {
       $push: { joinedEvents: event._id }
     });
 
-    const io = getIO();
+    
     io.to(String(event._id)).emit("members-updated", event.members);
 
     res.json({ success: true, message: "Joined event", event });
@@ -173,6 +178,8 @@ router.post("/:id/tasks", auth, async (req, res) => {
     // ✅ Auto-assign to self if member doesn't provide assignedTo
     const finalAssignedTo = assignedTo || userId;
 
+    const io = getIO();
+
     // ✅ Add task with createdBy field
     event.tasks.unshift({
       title,
@@ -180,6 +187,9 @@ router.post("/:id/tasks", auth, async (req, res) => {
       assignedTo: finalAssignedTo,
       createdBy:  userId // ✅ Track who created the task
     });
+    const user = await User.findById(userId);
+    event.activities.push({action: "task created" , message: `${user.username} created a task` , user: userId })
+    io.to(String(eventId)).emit("activities-updated", event.activities);
 
     await event.save();
     
@@ -187,7 +197,7 @@ router.post("/:id/tasks", auth, async (req, res) => {
     await event.populate("tasks.assignedTo", "username email");
     await event.populate("tasks.createdBy", "username email");
 
-    const io = getIO();
+    
     io.to(String(eventId)).emit("tasks-updated", event.tasks);
 
     res.json({ success: true, message: "Task added", tasks: event.tasks });
@@ -211,6 +221,8 @@ router.patch("/:eventId/tasks/:taskId/status", auth, async (req, res) => {
 
     const assignedId = String(task.assignedTo);
 
+    const io = getIO();
+
     // ✅ Only assigned user can update status
     if (assignedId !== String(userId)) {
       return res.json({
@@ -220,13 +232,16 @@ router.patch("/:eventId/tasks/:taskId/status", auth, async (req, res) => {
     }
 
     task.status = status;
+    const user = await User.findById(userId);
+    event.activities.push({action: "task updated" , message: `${user.username} updated task` , user: userId })
+    io.to(String(eventId)).emit("activities-updated", event.activities);
     await event.save();
 
     const updatedEvent = await Event.findById(eventId)
       .populate("tasks.assignedTo", "username email")
       .populate("tasks.createdBy", "username email"); // ✅ POPULATE createdBy
 
-    const io = getIO();
+    
     io.to(String(eventId)).emit("tasks-updated", updatedEvent.tasks);
 
     res.json({
@@ -255,16 +270,21 @@ router.delete("/:eventId/tasks/:taskId", auth, async (req, res) => {
         error: "Only organizer can delete tasks" 
       });
     }
-
+    
+    const io = getIO();
+    
     // Remove the task using pull (works with subdocuments)
     event.tasks.pull(taskId);
+    const user = await User.findById(userId);
+    event.activities.push({action: "task deleted" , message: `${user.username} deleted a task` , user: userId })
+    io.to(String(eventId)).emit("activities-updated", event.activities);
     await event.save();
 
     // ✅ Populate and emit updated tasks
     await event.populate("tasks.assignedTo", "username email");
     await event.populate("tasks.createdBy", "username email"); // ✅ POPULATE createdBy
 
-    const io = getIO();
+    
     io.to(String(eventId)).emit("tasks-updated", event.tasks);
 
     res.json({ 
