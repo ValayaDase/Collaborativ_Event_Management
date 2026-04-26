@@ -33,11 +33,24 @@ const statusConfig = {
   }
 };
 
-export default function KanbanColumn({ status, tasks, totalTasks, currentUserId, isOrganizer, isFinished, deleteTask, updateStatus }) {
+export default function KanbanColumn({
+  status,
+  tasks,
+  totalTasks,
+  currentUserId,
+  isOrganizer,
+  isFinished,
+  deleteTask,
+  updateStatus,
+  updateSchedule,
+  eventDeadline,
+  conflictTaskIds = []
+}) {
   const config = statusConfig[status];
   const Icon = config.icon;
   const statusTasks = tasks.filter(t => t.status === status);
   const progress = totalTasks > 0 ? Math.round((statusTasks.length / totalTasks) * 100) : 0;
+  const conflictSet = new Set(conflictTaskIds);
 
   return (
     <div className={`${config.bgColor} border ${config.borderColor} rounded-lg overflow-hidden shadow-md`}>
@@ -74,6 +87,9 @@ export default function KanbanColumn({ status, tasks, totalTasks, currentUserId,
               status={status}
               deleteTask={deleteTask}
               updateStatus={updateStatus}
+              updateSchedule={updateSchedule}
+              eventDeadline={eventDeadline}
+              hasConflict={conflictSet.has(task._id)}
             />
           ))
         )}

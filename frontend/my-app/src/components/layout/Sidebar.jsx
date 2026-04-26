@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { MdDashboard, MdEvent, MdLogout, MdMenu, MdClose } from 'react-icons/md';
+import { SlCalender } from "react-icons/sl";
 import { toast } from 'react-toastify';
 
 export default function Sidebar() {
@@ -11,7 +12,8 @@ export default function Sidebar() {
 
   const menuItems = [
     { path: '/dashboard', label: 'Dashboard', icon: MdDashboard },
-    { path: '/events', label: 'All Events', icon: MdEvent }
+    { path: '/events', label: 'All Events', icon: MdEvent },
+    { path: '/calendar', label: 'Calendar', icon: SlCalender }
   ];
 
   const handleLogout = () => {
@@ -41,7 +43,7 @@ export default function Sidebar() {
         <nav className="p-4 space-y-2">
           {menuItems.map((item) => {
             const Icon = item.icon;
-            const isActive = location.pathname === item.path;
+            const isActive = location.pathname === item.path || (item.path === '/calendar' && location.pathname === '/calender');
 
             return (
               <Link

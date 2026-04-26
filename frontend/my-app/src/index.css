@@ -25,3 +25,66 @@
 ::-webkit-scrollbar-thumb:hover {
   @apply bg-slate-300;
 }
+
+.fc {
+  font-family: inherit;
+}
+
+.fc .fc-toolbar {
+  @apply flex flex-col gap-4 md:flex-row md:items-center md:justify-between mb-6;
+}
+
+.fc .fc-toolbar-title {
+  @apply text-2xl font-black text-slate-900 tracking-tight;
+}
+
+.fc .fc-button {
+  @apply rounded-2xl border-0 bg-slate-900 px-4 py-2 text-sm font-bold shadow-none;
+}
+
+.fc .fc-button:disabled {
+  @apply bg-slate-300 text-slate-600;
+}
+
+.fc .fc-daygrid-day-frame {
+  @apply min-h-[132px] bg-white;
+}
+
+.fc .fc-col-header-cell {
+  @apply bg-slate-50;
+}
+
+.fc .fc-col-header-cell-cushion,
+.fc .fc-daygrid-day-number {
+  @apply px-3 py-2 font-bold text-slate-500;
+}
+
+.fc .fc-scrollgrid,
+.fc .fc-theme-standard td,
+.fc .fc-theme-standard th {
+  @apply border-slate-200;
+}
+
+.fc .fc-day-today {
+  @apply bg-slate-50;
+}
+
+.eventhub-calendar-event {
+  @apply rounded-2xl border-0 px-2 py-1.5 shadow-none;
+}
+
+.eventhub-calendar-task {
+  @apply bg-slate-100 text-slate-800;
+}
+
+.eventhub-calendar-deadline {
+  @apply bg-amber-100 text-amber-800;
+}
+
+.eventhub-calendar-conflict {
+  @apply bg-red-100 text-red-700 ring-1 ring-red-300;
+}
+
+.eventhub-calendar-near {
+  @apply border border-amber-300;
+}

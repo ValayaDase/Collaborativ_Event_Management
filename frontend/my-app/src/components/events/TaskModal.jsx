@@ -2,7 +2,23 @@
 import React from 'react';
 import { MdClose } from 'react-icons/md';
 
-export default function TaskModal({ showModal, setShowModal, taskTitle, setTaskTitle, taskDesc, setTaskDesc, assignedTo, setAssignedTo, members, organizerId, currentUserId, isOrganizer, createTask }) {
+export default function TaskModal({
+  showModal,
+  setShowModal,
+  taskTitle,
+  setTaskTitle,
+  taskDesc,
+  setTaskDesc,
+  taskDueDate,
+  setTaskDueDate,
+  assignedTo,
+  setAssignedTo,
+  members,
+  organizerId,
+  currentUserId,
+  isOrganizer,
+  createTask
+}) {
   if (!showModal) return null;
 
   return (
@@ -43,6 +59,21 @@ export default function TaskModal({ showModal, setShowModal, taskTitle, setTaskT
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none resize-none"
               placeholder="Enter task description (optional)"
             />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Task Date
+            </label>
+            <input
+              type="date"
+              value={taskDueDate}
+              onChange={(e) => setTaskDueDate(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+            />
+            <p className="text-xs text-gray-500 mt-2">
+              If left empty, the task can still inherit the event deadline on the calendar.
+            </p>
           </div>
 
           {isOrganizer && (

@@ -13,6 +13,7 @@ import ForgotPassword from './pages/ForgotPassword';
 import Dashboard from './pages/Dashboard';
 import EventsPage from './pages/EventsPage';
 import EventPage from './pages/EventPage';
+import CalendarPage from './pages/Calender';
 
 function App() {
   return (
@@ -63,6 +64,17 @@ function App() {
             </ProtectedRoute>
           }
         />
+
+        <Route
+          path="/calendar"
+          element={
+            <ProtectedRoute>
+              <CalendarPage />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route path="/calender" element={<Navigate to="/calendar" replace />} />
 
         {/* Default Redirect */}
         <Route path="/" element={<Navigate to="/login" replace />} />

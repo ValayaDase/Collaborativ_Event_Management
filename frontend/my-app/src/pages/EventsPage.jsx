@@ -77,19 +77,19 @@ export default function EventsPage() {
           <div className="flex gap-2">
             <button
               onClick={() => setFilter('all')}
-              className={`px-4 py-2 rounded-lg font-medium transition ${filter === 'all' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
+              className={`px-4 py-2 rounded-lg font-medium transition ${filter === 'all' ? 'bg-black text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200 cursor-pointer'}`}
             >
               All
             </button>
             <button
               onClick={() => setFilter('created')}
-              className={`px-4 py-2 rounded-lg font-medium transition ${filter === 'created' ?  'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
+              className={`px-4 py-2 rounded-lg font-medium transition ${filter === 'created' ?  'bg-black text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200 cursor-pointer'}`}
             >
               Created
             </button>
             <button
               onClick={() => setFilter('joined')}
-              className={`px-4 py-2 rounded-lg font-medium transition ${filter === 'joined' ? 'bg-blue-600 text-white' :  'bg-gray-100 text-gray-700 hover: bg-gray-200'}`}
+              className={`px-4 py-2 rounded-lg font-medium transition ${filter === 'joined' ? 'bg-black text-white' :  'bg-gray-100 text-gray-700 hover: bg-gray-200 cursor-pointer'}`}
             >
               Joined
             </button>

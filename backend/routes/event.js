@@ -1,13 +1,282 @@
-// backend/routes/event. js
 import express from "express";
 import crypto from "crypto";
+import mongoose from "mongoose";
 import { Event } from "../models/Event.js";
 import { User } from "../models/User.js";
 import { auth } from "../middleware/auth.js";
 import { Message } from "../models/Message.js";
 import { getIO } from "../socket.js";
+import {
+  ACTIVE_TASK_STATUSES,
+  buildEventHealth,
+  calculatePressure,
+  getEffectiveTaskDate,
+  isDeadlineNear
+} from "../utils/eventInsights.js";
 
 const router = express.Router();
+
+const DEFAULT_ACTIVITY_WINDOW_HOURS = 24;
+const DEFAULT_SILENT_FAILURE_HOURS = 48;
+const DEFAULT_PENDING_TASK_THRESHOLD = 8;
+const DEFAULT_OVERLOAD_THRESHOLD = 6;
+const DEFAULT_DEADLINE_WINDOW_DAYS = 5;
+
+const parsePositiveInt = (value, fallback) => {
+  const parsed = Number.parseInt(value, 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+};
+
+const toObjectId = (value) => new mongoose.Types.ObjectId(value);
+
+const populateEventDetails = (query) =>
+  query
+    .populate("organizer", "username email")
+    .populate("members", "username email")
+    .populate("tasks.assignedTo", "username email")
+    .populate("tasks.createdBy", "username email");
+
+const loadEventWithRelations = (eventId) => populateEventDetails(Event.findById(eventId));
+
+const sortHealth = (left, right) => {
+  const priority = { critical: 0, warning: 1, healthy: 2 };
+  return (
+    (priority[left.status] ?? 9) - (priority[right.status] ?? 9) ||
+    left.eventName.localeCompare(right.eventName)
+  );
+};
+
+const buildOverviewAlerts = (healthItems, conflicts) => {
+  const alerts = [];
+
+  healthItems.forEach((health) => {
+    if (health.silentFailure) {
+      alerts.push({
+        type: "silent-failure",
+        severity: "critical",
+        eventId: health.eventId,
+        eventName: health.eventName,
+        message: "No progress detected recently."
+      });
+    } else if (health.lowActivity) {
+      alerts.push({
+        type: "low-activity",
+        severity: "warning",
+        eventId: health.eventId,
+        eventName: health.eventName,
+        message: "Your event is slowing down."
+      });
+    }
+
+    if (health.tooManyPendingTasks) {
+      alerts.push({
+        type: "pending-overload",
+        severity: "warning",
+        eventId: health.eventId,
+        eventName: health.eventName,
+        message: `${health.pendingTasks} active tasks are still pending.`
+      });
+    }
+
+    if (health.nearDeadline) {
+      alerts.push({
+        type: "near-deadline",
+        severity: health.pressure.level === "high" ? "critical" : "warning",
+        eventId: health.eventId,
+        eventName: health.eventName,
+        message: "Deadline is near."
+      });
+    }
+
+    if (health.pressure.level === "high") {
+      alerts.push({
+        type: "pressure-high",
+        severity: "critical",
+        eventId: health.eventId,
+        eventName: health.eventName,
+        message: `Pressure level is HIGH (${health.pressure.value}).`
+      });
+    }
+  });
+
+  conflicts.sameDayConflicts.forEach((conflict) => {
+    alerts.push({
+      type: "task-conflict",
+      severity: "warning",
+      eventId: conflict.tasks[0]?.eventId || null,
+      eventName: conflict.tasks[0]?.eventName || "Task conflict",
+      message: `${conflict.username} has ${conflict.taskCount} tasks on ${conflict.dateKey}.`
+    });
+  });
+
+  conflicts.overloadedUsers.forEach((conflict) => {
+    alerts.push({
+      type: "user-overload",
+      severity: "warning",
+      eventId: conflict.tasks[0]?.eventId || null,
+      eventName: conflict.tasks[0]?.eventName || "Heavy workload",
+      message: `${conflict.username} has ${conflict.taskCount} active tasks assigned.`
+    });
+  });
+
+  return alerts;
+};
+
+const getConflictSummary = async (
+  userId,
+  { sameDayLimit = 1, overloadThreshold = DEFAULT_OVERLOAD_THRESHOLD } = {}
+) => {
+  const viewerId = toObjectId(userId);
+
+  const sameDayRaw = await Event.aggregate([
+    {
+      $match: {
+        members: viewerId,
+        isFinished: { $ne: true }
+      }
+    },
+    { $unwind: "$tasks" },
+    {
+      $addFields: {
+        effectiveDueDate: { $ifNull: ["$tasks.dueDate", "$deadline"] }
+      }
+    },
+    {
+      $match: {
+        "tasks.assignedTo": { $ne: null },
+        "tasks.status": { $in: ACTIVE_TASK_STATUSES },
+        effectiveDueDate: { $ne: null }
+      }
+    },
+    {
+      $group: {
+        _id: {
+          userId: "$tasks.assignedTo",
+          dateKey: {
+            $dateToString: {
+              format: "%Y-%m-%d",
+              date: "$effectiveDueDate"
+            }
+          }
+        },
+        taskCount: { $sum: 1 },
+        tasks: {
+          $push: {
+            taskId: "$tasks._id",
+            title: "$tasks.title",
+            status: "$tasks.status",
+            eventId: "$_id",
+            eventName: "$eventName",
+            dueDate: "$effectiveDueDate"
+          }
+        }
+      }
+    },
+    {
+      $match: {
+        taskCount: { $gt: sameDayLimit }
+      }
+    },
+    {
+      $sort: {
+        "_id.dateKey": 1,
+        taskCount: -1
+      }
+    }
+  ]);
+
+  const overloadedRaw = await Event.aggregate([
+    {
+      $match: {
+        members: viewerId,
+        isFinished: { $ne: true }
+      }
+    },
+    { $unwind: "$tasks" },
+    {
+      $match: {
+        "tasks.assignedTo": { $ne: null },
+        "tasks.status": { $in: ACTIVE_TASK_STATUSES }
+      }
+    },
+    {
+      $group: {
+        _id: "$tasks.assignedTo",
+        taskCount: { $sum: 1 },
+        tasks: {
+          $push: {
+            taskId: "$tasks._id",
+            title: "$tasks.title",
+            status: "$tasks.status",
+            dueDate: { $ifNull: ["$tasks.dueDate", "$deadline"] },
+            eventId: "$_id",
+            eventName: "$eventName"
+          }
+        }
+      }
+    },
+    {
+      $match: {
+        taskCount: { $gte: overloadThreshold }
+      }
+    },
+    {
+      $sort: {
+        taskCount: -1
+      }
+    }
+  ]);
+
+  const userIds = [
+    ...new Set([
+      ...sameDayRaw.map((item) => String(item._id.userId)),
+      ...overloadedRaw.map((item) => String(item._id))
+    ])
+  ];
+
+  const users = await User.find({ _id: { $in: userIds } }).select("username email");
+  const userMap = new Map(users.map((user) => [String(user._id), user]));
+
+  const sameDayConflicts = sameDayRaw.map((item) => ({
+    userId: String(item._id.userId),
+    username: userMap.get(String(item._id.userId))?.username || "Unknown user",
+    dateKey: item._id.dateKey,
+    taskCount: item.taskCount,
+    tasks: item.tasks.map((task) => ({
+      ...task,
+      taskId: String(task.taskId),
+      eventId: String(task.eventId)
+    }))
+  }));
+
+  const overloadedUsers = overloadedRaw.map((item) => ({
+    userId: String(item._id),
+    username: userMap.get(String(item._id))?.username || "Unknown user",
+    taskCount: item.taskCount,
+    tasks: item.tasks.map((task) => ({
+      ...task,
+      taskId: String(task.taskId),
+      eventId: String(task.eventId)
+    }))
+  }));
+
+  const currentUserConflictTaskIds = [
+    ...new Set([
+      ...sameDayConflicts
+        .filter((conflict) => conflict.userId === userId)
+        .flatMap((conflict) => conflict.tasks.map((task) => task.taskId)),
+      ...(overloadedUsers.find((conflict) => conflict.userId === userId)?.tasks || []).map(
+        (task) => task.taskId
+      )
+    ])
+  ];
+
+  return {
+    sameDayConflicts,
+    overloadedUsers,
+    currentUserConflictTaskIds
+  };
+};
 
 // ---------- CREATE EVENT ----------
 router.post("/create", auth, async (req, res) => {
@@ -21,7 +290,7 @@ router.post("/create", auth, async (req, res) => {
       eventName,
       eventCode,
       organizer: userId,
-      members:  [userId]
+      members: [userId]
     });
 
     await User.findByIdAndUpdate(userId, {
@@ -30,7 +299,7 @@ router.post("/create", auth, async (req, res) => {
 
     return res.json({
       success: true,
-      message:  "Event created successfully",
+      message: "Event created successfully",
       eventCode,
       event
     });
@@ -39,13 +308,210 @@ router.post("/create", auth, async (req, res) => {
   }
 });
 
+// ---------- DASHBOARD OVERVIEW ----------
+router.get("/dashboard/overview", auth, async (req, res) => {
+  try {
+    const activityWindowHours = parsePositiveInt(
+      req.query.activityWindowHours,
+      DEFAULT_ACTIVITY_WINDOW_HOURS
+    );
+    const silentFailureHours = parsePositiveInt(
+      req.query.silentFailureHours,
+      DEFAULT_SILENT_FAILURE_HOURS
+    );
+    const pendingTaskThreshold = parsePositiveInt(
+      req.query.pendingTaskThreshold,
+      DEFAULT_PENDING_TASK_THRESHOLD
+    );
+    const overloadThreshold = parsePositiveInt(
+      req.query.overloadThreshold,
+      DEFAULT_OVERLOAD_THRESHOLD
+    );
+
+    const events = await Event.find({ members: req.userId }).sort({ updatedAt: -1 });
+
+    const eventHealth = events
+      .map((event) =>
+        buildEventHealth(event, {
+          activityWindowHours,
+          silentFailureHours,
+          pendingTaskThreshold,
+          deadlineWindowDays: DEFAULT_DEADLINE_WINDOW_DAYS
+        })
+      )
+      .sort(sortHealth);
+
+    const conflicts = await getConflictSummary(req.userId, {
+      overloadThreshold
+    });
+
+    const alerts = buildOverviewAlerts(eventHealth, conflicts);
+    const pendingTasks = eventHealth.reduce((total, item) => total + item.pendingTasks, 0);
+    const completedTasks = eventHealth.reduce((total, item) => total + item.completedTasks, 0);
+    const highestPressure = [...eventHealth]
+      .filter((item) => item.pressure.value !== null)
+      .sort((left, right) => (right.pressure.value || 0) - (left.pressure.value || 0))[0] || null;
+
+    res.json({
+      success: true,
+      summary: {
+        totalEvents: events.length,
+        pendingTasks,
+        completedTasks,
+        warningEvents: eventHealth.filter((item) => item.status !== "healthy").length,
+        silentFailures: eventHealth.filter((item) => item.silentFailure).length,
+        nearDeadlines: eventHealth.filter((item) => item.nearDeadline).length,
+        highPressureCount: eventHealth.filter((item) => item.pressure.level === "high").length,
+        highestPressure
+      },
+      alerts,
+      eventHealth,
+      conflicts
+    });
+  } catch (err) {
+    res.json({ success: false, error: err.message });
+  }
+});
+
+// ---------- GLOBAL CONFLICTS ----------
+router.get("/conflicts", auth, async (req, res) => {
+  try {
+    const overloadThreshold = parsePositiveInt(
+      req.query.overloadThreshold,
+      DEFAULT_OVERLOAD_THRESHOLD
+    );
+
+    const conflicts = await getConflictSummary(req.userId, {
+      overloadThreshold
+    });
+
+    res.json({ success: true, conflicts });
+  } catch (err) {
+    res.json({ success: false, error: err.message });
+  }
+});
+
+// ---------- CALENDAR FEED ----------
+router.get("/calendar/feed", auth, async (req, res) => {
+  try {
+    const overloadThreshold = parsePositiveInt(
+      req.query.overloadThreshold,
+      DEFAULT_OVERLOAD_THRESHOLD
+    );
+    const events = await Event.find({
+      members: req.userId,
+      isFinished: { $ne: true }
+    }).sort({ deadline: 1, updatedAt: -1 });
+
+    const conflicts = await getConflictSummary(req.userId, { overloadThreshold });
+    const conflictTaskIds = new Set(conflicts.currentUserConflictTaskIds);
+
+    const items = [];
+    const unscheduledTasks = [];
+
+    events.forEach((event) => {
+      const health = buildEventHealth(event);
+      const eventHasConflicts = conflicts.sameDayConflicts.some((conflict) =>
+        conflict.tasks.some((task) => task.eventId === String(event._id))
+      );
+
+      if (event.deadline) {
+        items.push({
+          id: `event-deadline-${event._id}`,
+          title: health.nearDeadline
+            ? `Deadline near: ${event.eventName}`
+            : `Deadline: ${event.eventName}`,
+          start: event.deadline,
+          allDay: true,
+          extendedProps: {
+            kind: "event-deadline",
+            eventId: String(event._id),
+            eventName: event.eventName,
+            nearDeadline: health.nearDeadline,
+            pressureLevel: health.pressure.level,
+            pendingTasks: health.pendingTasks,
+            warning: health.nearDeadline || health.pressure.level === "high" || eventHasConflicts
+          }
+        });
+      }
+
+      (event.tasks || []).forEach((task) => {
+        const isUserTask = String(task.assignedTo) === String(req.userId);
+        if (!isUserTask || !ACTIVE_TASK_STATUSES.includes(task.status)) {
+          return;
+        }
+
+        const effectiveDate = getEffectiveTaskDate(task, event.deadline);
+        if (!effectiveDate) {
+          unscheduledTasks.push({
+            eventId: String(event._id),
+            eventName: event.eventName,
+            taskId: String(task._id),
+            title: task.title,
+            status: task.status
+          });
+          return;
+        }
+
+        items.push({
+          id: `task-${task._id}`,
+          title: task.title,
+          start: effectiveDate,
+          allDay: true,
+          extendedProps: {
+            kind: "task",
+            eventId: String(event._id),
+            eventName: event.eventName,
+            taskId: String(task._id),
+            status: task.status,
+            conflict: conflictTaskIds.has(String(task._id)),
+            usesEventDeadline: !task.dueDate && !!event.deadline,
+            nearDeadline: isDeadlineNear(event.deadline, DEFAULT_DEADLINE_WINDOW_DAYS)
+          }
+        });
+      });
+    });
+
+    res.json({
+      success: true,
+      items,
+      conflicts,
+      unscheduledTasks
+    });
+  } catch (err) {
+    res.json({ success: false, error: err.message });
+  }
+});
+
+// ---------- FETCH EVENTS FOR DASHBOARD ----------
+router.get("/user-events", auth, async (req, res) => {
+  try {
+    const userId = req.userId;
+
+    const user = await User.findById(userId)
+      .populate("createdEvents")
+      .populate("joinedEvents");
+
+    const organizerEvents = (user?.createdEvents || []).sort(
+      (left, right) => new Date(right.updatedAt) - new Date(left.updatedAt)
+    );
+    const memberEvents = (user?.joinedEvents || [])
+      .filter((event) => String(event.organizer) !== String(userId))
+      .sort((left, right) => new Date(right.updatedAt) - new Date(left.updatedAt));
+
+    res.json({ success: true, organizerEvents, memberEvents });
+  } catch (err) {
+    res.json({ success: false, error: err.message });
+  }
+});
+
 // ---------- DELETE EVENT ----------
-router. delete("/:id", auth, async (req, res) => {
+router.delete("/:id", auth, async (req, res) => {
   try {
     const eventId = req.params.id;
     const userId = req.userId;
 
-    const event = await Event. findById(eventId);
+    const event = await Event.findById(eventId);
     if (!event) return res.json({ success: false, error: "Event not found" });
 
     if (String(event.organizer) !== String(userId)) {
@@ -67,7 +533,7 @@ router. delete("/:id", auth, async (req, res) => {
 
     return res.json({ success: true, message: "Event deleted successfully" });
   } catch (err) {
-    return res.json({ success: false, error: err. message });
+    return res.json({ success: false, error: err.message });
   }
 });
 
@@ -77,50 +543,33 @@ router.post("/join", auth, async (req, res) => {
     const { eventCode } = req.body;
     const userId = req.userId;
 
-    const event = await Event. findOne({ eventCode });
-
+    const event = await Event.findOne({ eventCode });
     if (!event) return res.json({ success: false, error: "Invalid event code" });
 
-    if (event.members.includes(userId)) {
-      return res. json({ success: true, message:  "Already joined", event });
+    if (event.members.some((memberId) => String(memberId) === String(userId))) {
+      return res.json({ success: true, message: "Already joined", event });
     }
 
     const io = getIO();
+    const user = await User.findById(userId);
 
     event.members.push(userId);
-    const user = await User.findById(userId);
-    event.activities.push({action: "join" , message: `${user.username} joined the event` , user: userId })
-    io.to(String(event._id)).emit("activities-updated", event.activities);
+    event.activities.push({
+      action: "join",
+      message: `${user.username} joined the event`,
+      user: userId
+    });
+
     await event.save();
+
+    io.to(String(event._id)).emit("activities-updated", event.activities);
+    io.to(String(event._id)).emit("members-updated", event.members);
 
     await User.findByIdAndUpdate(userId, {
       $push: { joinedEvents: event._id }
     });
 
-    
-    io.to(String(event._id)).emit("members-updated", event.members);
-
     res.json({ success: true, message: "Joined event", event });
-  } catch (err) {
-    res.json({ success: false, error: err. message });
-  }
-});
-
-// ---------- FETCH EVENTS FOR DASHBOARD ----------
-router.get("/user-events", auth, async (req, res) => {
-  try {
-    const userId = req.userId;
-
-    const user = await User.findById(userId)
-      .populate("createdEvents")
-      .populate("joinedEvents");
-
-    const organizerEvents = user.createdEvents;
-    const memberEvents = user.joinedEvents.filter(
-      (ev) => ev.organizer.toString() !== userId
-    );
-
-    res.json({ success: true, organizerEvents, memberEvents });
   } catch (err) {
     res.json({ success: false, error: err.message });
   }
@@ -129,102 +578,181 @@ router.get("/user-events", auth, async (req, res) => {
 // ---------- GET SINGLE EVENT DETAILS ----------
 router.get("/:id", auth, async (req, res) => {
   try {
-    const eventId = req.params. id;
-
-    const event = await Event.findById(eventId)
-      .populate("organizer", "username email")
-      .populate("members", "username email")
-      .populate("tasks.assignedTo", "username email")
-      .populate("tasks.createdBy", "username email"); // ✅ POPULATE createdBy
+    const eventId = req.params.id;
+    const event = await loadEventWithRelations(eventId);
 
     if (!event) return res.json({ success: false, error: "Event not found" });
 
-    res.json({ success: true, event });
+    const health = buildEventHealth(event);
+
+    res.json({ success: true, event, health });
   } catch (err) {
     res.json({ success: false, error: err.message });
   }
 });
 
-// ---------- CREATE/ASSIGN TASK (ALL MEMBERS CAN CREATE) ----------
-router.post("/:id/tasks", auth, async (req, res) => {
+// ---------- EVENT HEALTH ----------
+router.get("/:id/health", auth, async (req, res) => {
+  try {
+    const activityWindowHours = parsePositiveInt(
+      req.query.activityWindowHours,
+      DEFAULT_ACTIVITY_WINDOW_HOURS
+    );
+    const silentFailureHours = parsePositiveInt(
+      req.query.silentFailureHours,
+      DEFAULT_SILENT_FAILURE_HOURS
+    );
+    const pendingTaskThreshold = parsePositiveInt(
+      req.query.pendingTaskThreshold,
+      DEFAULT_PENDING_TASK_THRESHOLD
+    );
+
+    const event = await Event.findById(req.params.id);
+    if (!event) return res.json({ success: false, error: "Event not found" });
+
+    const health = buildEventHealth(event, {
+      activityWindowHours,
+      silentFailureHours,
+      pendingTaskThreshold
+    });
+
+    res.json({ success: true, health });
+  } catch (err) {
+    res.json({ success: false, error: err.message });
+  }
+});
+
+// ---------- EVENT PRESSURE ----------
+router.get("/:id/pressure", auth, async (req, res) => {
+  try {
+    const event = await Event.findById(req.params.id);
+    if (!event) return res.json({ success: false, error: "Event not found" });
+
+    const pendingTasks = (event.tasks || []).filter((task) =>
+      ACTIVE_TASK_STATUSES.includes(task.status)
+    ).length;
+
+    res.json({
+      success: true,
+      pressure: calculatePressure(pendingTasks, event.deadline),
+      pendingTasks
+    });
+  } catch (err) {
+    res.json({ success: false, error: err.message });
+  }
+});
+
+// ---------- UPDATE EVENT DEADLINE ----------
+router.patch("/:id/deadline", auth, async (req, res) => {
   try {
     const eventId = req.params.id;
-    const userId = req. userId;
-    const { title, description, assignedTo } = req.body;
+    const userId = req.userId;
+    const { deadline } = req.body;
 
     const event = await Event.findById(eventId);
     if (!event) return res.json({ success: false, error: "Event not found" });
 
-    // ✅ CHECK: User must be a member of this event
-    const isMember = event.members.some(m => m.toString() === userId.toString());
-    if (!isMember) {
-      return res.json({ 
-        success: false, 
-        error: "You must be a member of this event to create tasks" 
-      });
+    if (String(event.organizer) !== String(userId)) {
+      return res.json({ success: false, error: "Only organizer can update deadline" });
     }
 
-    // ✅ CHECK: Organizer vs Member permissions
-    const isOrganizer = event.organizer.toString() === userId.toString();
-    
-    // If regular member (not organizer) tries to assign to someone else
-    if (!isOrganizer && assignedTo && assignedTo !== userId) {
-      return res. json({ 
-        success: false, 
-        error: "Members can only create tasks for themselves" 
-      });
-    }
+    event.deadline = deadline ? new Date(deadline) : null;
 
-    // ✅ Auto-assign to self if member doesn't provide assignedTo
-    const finalAssignedTo = assignedTo || userId;
+    const user = await User.findById(userId);
+    event.activities.push({
+      action: "deadline-updated",
+      message: `${user.username} updated the event deadline`,
+      user: userId
+    });
 
+    await event.save();
+
+    const updatedEvent = await loadEventWithRelations(eventId);
     const io = getIO();
+    io.to(String(eventId)).emit("activities-updated", updatedEvent.activities);
+    io.to(String(eventId)).emit("event-updated", updatedEvent);
 
-    // ✅ Add task with createdBy field
+    res.json({
+      success: true,
+      message: "Event deadline updated",
+      event: updatedEvent,
+      health: buildEventHealth(updatedEvent)
+    });
+  } catch (err) {
+    res.json({ success: false, error: err.message });
+  }
+});
+
+// ---------- CREATE/ASSIGN TASK ----------
+router.post("/:id/tasks", auth, async (req, res) => {
+  try {
+    const eventId = req.params.id;
+    const userId = req.userId;
+    const { title, description, assignedTo, dueDate } = req.body;
+
+    const event = await Event.findById(eventId);
+    if (!event) return res.json({ success: false, error: "Event not found" });
+
+    const isMember = event.members.some((memberId) => String(memberId) === String(userId));
+    if (!isMember) {
+      return res.json({
+        success: false,
+        error: "You must be a member of this event to create tasks"
+      });
+    }
+
+    const isOrganizer = String(event.organizer) === String(userId);
+    if (!isOrganizer && assignedTo && String(assignedTo) !== String(userId)) {
+      return res.json({
+        success: false,
+        error: "Members can only create tasks for themselves"
+      });
+    }
+
+    const finalAssignedTo = assignedTo || userId;
+    const io = getIO();
+    const user = await User.findById(userId);
+
     event.tasks.unshift({
       title,
       description,
       assignedTo: finalAssignedTo,
-      createdBy:  userId // ✅ Track who created the task
+      createdBy: userId,
+      dueDate: dueDate || null
     });
-    const user = await User.findById(userId);
-    event.activities.push({action: "task created" , message: `${user.username} created a task` , user: userId })
-    io.to(String(eventId)).emit("activities-updated", event.activities);
+
+    event.activities.push({
+      action: "task-created",
+      message: `${user.username} created a task`,
+      user: userId
+    });
 
     await event.save();
-    
-    // ✅ Populate both assignedTo and createdBy
-    await event.populate("tasks.assignedTo", "username email");
-    await event.populate("tasks.createdBy", "username email");
 
-    
-    io.to(String(eventId)).emit("tasks-updated", event.tasks);
+    const updatedEvent = await loadEventWithRelations(eventId);
+    io.to(String(eventId)).emit("activities-updated", updatedEvent.activities);
+    io.to(String(eventId)).emit("tasks-updated", updatedEvent.tasks);
 
-    res.json({ success: true, message: "Task added", tasks: event.tasks });
+    res.json({ success: true, message: "Task added", tasks: updatedEvent.tasks });
   } catch (err) {
     res.json({ success: false, error: err.message });
   }
 });
 
-// ---------- UPDATE TASK STATUS (ONLY ASSIGNED MEMBER) ----------
+// ---------- UPDATE TASK STATUS ----------
 router.patch("/:eventId/tasks/:taskId/status", auth, async (req, res) => {
   try {
     const { eventId, taskId } = req.params;
     const { status } = req.body;
-    const userId = req. userId;
+    const userId = req.userId;
 
     const event = await Event.findById(eventId);
     if (!event) return res.json({ success: false, error: "Event not found" });
 
-    const task = event.tasks. id(taskId);
+    const task = event.tasks.id(taskId);
     if (!task) return res.json({ success: false, error: "Task not found" });
 
-    const assignedId = String(task.assignedTo);
-
-    const io = getIO();
-
-    // ✅ Only assigned user can update status
-    if (assignedId !== String(userId)) {
+    if (String(task.assignedTo) !== String(userId)) {
       return res.json({
         success: false,
         error: "Only assigned member can update status"
@@ -232,16 +760,19 @@ router.patch("/:eventId/tasks/:taskId/status", auth, async (req, res) => {
     }
 
     task.status = status;
+
     const user = await User.findById(userId);
-    event.activities.push({action: "task updated" , message: `${user.username} updated task` , user: userId })
-    io.to(String(eventId)).emit("activities-updated", event.activities);
+    event.activities.push({
+      action: "task-updated",
+      message: `${user.username} updated task status`,
+      user: userId
+    });
+
     await event.save();
 
-    const updatedEvent = await Event.findById(eventId)
-      .populate("tasks.assignedTo", "username email")
-      .populate("tasks.createdBy", "username email"); // ✅ POPULATE createdBy
-
-    
+    const updatedEvent = await loadEventWithRelations(eventId);
+    const io = getIO();
+    io.to(String(eventId)).emit("activities-updated", updatedEvent.activities);
     io.to(String(eventId)).emit("tasks-updated", updatedEvent.tasks);
 
     res.json({
@@ -254,50 +785,97 @@ router.patch("/:eventId/tasks/:taskId/status", auth, async (req, res) => {
   }
 });
 
-// ---------- DELETE TASK (ORGANIZER ONLY) ----------
+// ---------- UPDATE TASK SCHEDULE ----------
+router.patch("/:eventId/tasks/:taskId/schedule", auth, async (req, res) => {
+  try {
+    const { eventId, taskId } = req.params;
+    const { dueDate } = req.body;
+    const userId = req.userId;
+
+    const event = await Event.findById(eventId);
+    if (!event) return res.json({ success: false, error: "Event not found" });
+
+    const task = event.tasks.id(taskId);
+    if (!task) return res.json({ success: false, error: "Task not found" });
+
+    const isOrganizer = String(event.organizer) === String(userId);
+    const isAssignedUser = String(task.assignedTo) === String(userId);
+
+    if (!isOrganizer && !isAssignedUser) {
+      return res.json({
+        success: false,
+        error: "Only organizer or assigned member can update task schedule"
+      });
+    }
+
+    task.dueDate = dueDate ? new Date(dueDate) : null;
+
+    const user = await User.findById(userId);
+    event.activities.push({
+      action: "task-scheduled",
+      message: `${user.username} updated task schedule`,
+      user: userId
+    });
+
+    await event.save();
+
+    const updatedEvent = await loadEventWithRelations(eventId);
+    const io = getIO();
+    io.to(String(eventId)).emit("activities-updated", updatedEvent.activities);
+    io.to(String(eventId)).emit("tasks-updated", updatedEvent.tasks);
+
+    res.json({
+      success: true,
+      message: "Task schedule updated",
+      tasks: updatedEvent.tasks
+    });
+  } catch (err) {
+    res.json({ success: false, error: err.message });
+  }
+});
+
+// ---------- DELETE TASK ----------
 router.delete("/:eventId/tasks/:taskId", auth, async (req, res) => {
   try {
     const { eventId, taskId } = req.params;
     const userId = req.userId;
 
     const event = await Event.findById(eventId);
-    if (!event) return res.status(404).json({ success: false, error:  "Event not found" });
+    if (!event) return res.status(404).json({ success: false, error: "Event not found" });
 
-    // ✅ Check if user is organizer
-    if (event.organizer.toString() !== userId.toString()) {
-      return res.status(403).json({ 
-        success: false, 
-        error: "Only organizer can delete tasks" 
+    if (String(event.organizer) !== String(userId)) {
+      return res.status(403).json({
+        success: false,
+        error: "Only organizer can delete tasks"
       });
     }
-    
-    const io = getIO();
-    
-    // Remove the task using pull (works with subdocuments)
-    event.tasks.pull(taskId);
+
     const user = await User.findById(userId);
-    event.activities.push({action: "task deleted" , message: `${user.username} deleted a task` , user: userId })
-    io.to(String(eventId)).emit("activities-updated", event.activities);
+    event.tasks.pull(taskId);
+    event.activities.push({
+      action: "task-deleted",
+      message: `${user.username} deleted a task`,
+      user: userId
+    });
+
     await event.save();
 
-    // ✅ Populate and emit updated tasks
-    await event.populate("tasks.assignedTo", "username email");
-    await event.populate("tasks.createdBy", "username email"); // ✅ POPULATE createdBy
+    const updatedEvent = await loadEventWithRelations(eventId);
+    const io = getIO();
+    io.to(String(eventId)).emit("activities-updated", updatedEvent.activities);
+    io.to(String(eventId)).emit("tasks-updated", updatedEvent.tasks);
 
-    
-    io.to(String(eventId)).emit("tasks-updated", event.tasks);
-
-    res.json({ 
-      success: true, 
+    res.json({
+      success: true,
       message: "Task deleted successfully",
-      tasks: event.tasks 
+      tasks: updatedEvent.tasks
     });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
 });
 
-// ---------- FINISH EVENT (ORGANIZER ONLY) ----------
+// ---------- FINISH EVENT ----------
 router.post("/:id/finish", auth, async (req, res) => {
   try {
     const eventId = req.params.id;
@@ -306,8 +884,7 @@ router.post("/:id/finish", auth, async (req, res) => {
     const event = await Event.findById(eventId);
     if (!event) return res.json({ success: false, error: "Event not found" });
 
-    // ✅ Only organizer can finish event
-    if (event.organizer.toString() !== userId.toString()) {
+    if (String(event.organizer) !== String(userId)) {
       return res.json({ success: false, error: "Only organizer can finish event" });
     }
 
@@ -316,8 +893,9 @@ router.post("/:id/finish", auth, async (req, res) => {
 
     const io = getIO();
     io.to(String(eventId)).emit("event-finished");
+    io.to(String(eventId)).emit("event-updated", event);
 
-    res.json({ success: true, message:  "Event finished" });
+    res.json({ success: true, message: "Event finished" });
   } catch (err) {
     res.json({ success: false, error: err.message });
   }
