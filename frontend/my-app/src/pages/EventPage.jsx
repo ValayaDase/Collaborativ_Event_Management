@@ -60,6 +60,8 @@ export default function EventPage() {
   const [health, setHealth] = useState(null);
   const [isOrganizer, setIsOrganizer] = useState(false);
   const [showTaskModal, setShowTaskModal] = useState(false);
+  const [showAddMemberModal, setShowAddMemberModal] = useState(false);
+  const [newMemberEmail, setNewMemberEmail] = useState('');
   const [taskTitle, setTaskTitle] = useState('');
   const [taskDesc, setTaskDesc] = useState('');
   const [taskDueDate, setTaskDueDate] = useState('');
@@ -266,6 +268,31 @@ export default function EventPage() {
     }
   };
 
+  const addMember = async () => {
+    if (!newMemberEmail.trim()) {
+      toast.error('Email is required');
+      return;
+    }
+
+    try {
+      const res = await axios.post(
+        `${API_URL}/event/${eventId}/members/add`,
+        { email: newMemberEmail },
+        { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }
+      );
+
+      if (res.data.success) {
+        setShowAddMemberModal(false);
+        setNewMemberEmail('');
+        toast.success(res.data.message || 'Member added successfully');
+      } else {
+        toast.error(res.data.error || 'Failed to add member');
+      }
+    } catch (error) {
+      toast.error(error.response?.data?.error || 'Failed to add member');
+    }
+  };
+
   const calculateProgress = () => {
     const total = tasks.length;
     const todoCount = tasks.filter((task) => task.status === 'todo').length;
@@ -344,14 +371,26 @@ export default function EventPage() {
                 ) : null}
               </div>
 
-              <button
-                type="button"
-                onClick={() => setShowTaskModal(true)}
-                className="flex items-center justify-center gap-2 px-6 py-3 bg-slate-900 hover:bg-black text-white rounded-2xl font-bold transition-all shadow-lg shadow-slate-200"
-              >
-                <MdAdd className="text-xl" />
-                New Task
-              </button>
+              <div className="flex flex-col sm:flex-row gap-3">
+                <button
+                  type="button"
+                  onClick={() => setShowTaskModal(true)}
+                  className="flex items-center justify-center gap-2 px-6 py-3 bg-slate-900 hover:bg-black text-white rounded-2xl font-bold transition-all shadow-lg shadow-slate-200"
+                >
+                  <MdAdd className="text-xl" />
+                  New Task
+                </button>
+                {isOrganizer && (
+                  <button
+                    type="button"
+                    onClick={() => setShowAddMemberModal(true)}
+                    className="flex items-center justify-center gap-2 px-6 py-3 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-2xl font-bold transition-all"
+                  >
+                    <MdAdd className="text-xl" />
+                    Add Member
+                  </button>
+                )}
+              </div>
             </div>
           </div>
 
@@ -504,6 +543,55 @@ export default function EventPage() {
         isOrganizer={isOrganizer}
         createTask={createTask}
       />
+
+      {showAddMemberModal ? (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div 
+            className="absolute inset-0 bg-slate-900/40 backdrop-blur-md transition-opacity" 
+            onClick={() => setShowAddMemberModal(false)} 
+          />
+          <div className="relative w-full max-w-md bg-white/95 backdrop-blur-xl rounded-[2.5rem] shadow-2xl border border-white/20 p-8 animate-in zoom-in-95 duration-200">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-2xl font-black text-slate-900 tracking-tight">Add Member</h2>
+              <button 
+                onClick={() => setShowAddMemberModal(false)}
+                className="p-2 hover:bg-slate-200/50 rounded-full transition-colors"
+              >
+                <MdClose className="text-2xl text-slate-600" />
+              </button>
+            </div>
+            <div className="space-y-6">
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                  <MdGroups /> Member Email *
+                </label>
+                <input
+                  type="email"
+                  value={newMemberEmail}
+                  onChange={(e) => setNewMemberEmail(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && addMember()}
+                  placeholder="user@example.com"
+                  className="w-full bg-slate-100/50 border-none rounded-2xl p-4 focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                />
+              </div>
+              <div className="flex gap-3 pt-4">
+                <button
+                  onClick={() => setShowAddMemberModal(false)}
+                  className="flex-1 py-4 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-2xl font-bold transition-all"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={addMember}
+                  className="flex-[2] py-4 bg-slate-900 hover:bg-black text-white rounded-2xl font-bold transition-all active:scale-[0.98] shadow-lg shadow-slate-200"
+                >
+                  Add Member
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       {!isChatOpen ? (
         <button

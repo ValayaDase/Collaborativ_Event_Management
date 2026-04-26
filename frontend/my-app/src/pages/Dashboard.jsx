@@ -29,6 +29,7 @@ export default function Dashboard() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showJoinModal, setShowJoinModal] = useState(false);
   const [eventName, setEventName] = useState('');
+  const [eventDeadline, setEventDeadline] = useState('');
   const [joinCode, setJoinCode] = useState('');
   const [createdEventCode, setCreatedEventCode] = useState('');
 
@@ -89,7 +90,7 @@ export default function Dashboard() {
     try {
       const res = await axios.post(
         `${API_URL}/event/create`,
-        { eventName },
+        { eventName, deadline: eventDeadline || undefined },
         { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }
       );
 
@@ -97,6 +98,7 @@ export default function Dashboard() {
         toast.success('Event created');
         setCreatedEventCode(res.data.eventCode);
         setEventName('');
+        setEventDeadline('');
         await loadDashboard();
       } else {
         toast.error(res.data.error);
@@ -174,66 +176,6 @@ export default function Dashboard() {
         ) : null}
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 mb-8">
-        <div className="xl:col-span-8">
-          <EventHealthPanel
-            eventHealth={eventHealth}
-            alerts={alerts}
-            onOpenEvent={(eventId) => navigate(`/event/${eventId}`)}
-          />
-        </div>
-        <div className="xl:col-span-4 space-y-6">
-          <PressureMeter
-            title="Pressure Level"
-            pressure={highestPressure?.pressure || { label: 'No deadline', level: 'unknown', value: null, daysLeft: null }}
-            subtitle={
-              highestPressure
-                ? `${highestPressure.eventName} has the highest load right now.`
-                : 'Add deadlines to events so pressure can be tracked.'
-            }
-          />
-
-          <div className="bg-white rounded-[2rem] border border-slate-200/70 shadow-sm p-6">
-            <p className="text-xs font-black uppercase tracking-[0.28em] text-slate-400">Conflict Detector</p>
-            <h3 className="text-2xl font-black text-slate-900 mt-2">
-              {conflicts.sameDayConflicts.length + conflicts.overloadedUsers.length}
-            </h3>
-            <p className="text-sm text-slate-500 mt-2">
-              Same-day task overlaps and overloaded assignees across your active events.
-            </p>
-
-            <div className="space-y-3 mt-5">
-              {firstConflict ? (
-                <div className="rounded-2xl border border-red-200 bg-red-50 p-4">
-                  <p className="text-sm font-bold text-red-700">Same-day overlap</p>
-                  <p className="text-sm text-red-600 mt-1">
-                    {firstConflict.username} has {firstConflict.taskCount} tasks on {firstConflict.dateKey}.
-                  </p>
-                </div>
-              ) : null}
-
-              {firstOverload ? (
-                <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
-                  <p className="text-sm font-bold text-amber-700">Heavy assignment load</p>
-                  <p className="text-sm text-amber-600 mt-1">
-                    {firstOverload.username} is carrying {firstOverload.taskCount} active tasks.
-                  </p>
-                </div>
-              ) : null}
-
-              {!firstConflict && !firstOverload ? (
-                <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
-                  <p className="text-sm font-bold text-emerald-700">No conflicts right now</p>
-                  <p className="text-sm text-emerald-600 mt-1">
-                    The current workload looks balanced.
-                  </p>
-                </div>
-              ) : null}
-            </div>
-          </div>
-        </div>
-      </div>
-
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         <StatsCard
           title="Total Events"
@@ -263,6 +205,66 @@ export default function Dashboard() {
           bgColor="bg-amber-100"
           iconColor="text-amber-700"
         />
+      </div>
+
+      <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 mb-8">
+        <div className="xl:col-span-8">
+          <EventHealthPanel
+            eventHealth={eventHealth}
+            alerts={alerts}
+            onOpenEvent={(eventId) => navigate(`/event/${eventId}`)}
+          />
+        </div>
+        <div className="xl:col-span-4 space-y-6">
+          <PressureMeter
+            title="Pressure Level"
+            pressure={highestPressure?.pressure || { label: 'No deadline', level: 'unknown', value: null, daysLeft: null }}
+            subtitle={
+              highestPressure
+                ? `${highestPressure.eventName} has the highest load right now.`
+                : 'Add deadlines to events so pressure can be tracked.'
+            }
+          />
+
+          {/* <div className="bg-white rounded-[2rem] border border-slate-200/70 shadow-sm p-6 overflow-hidden">
+            <p className="text-xs font-black uppercase tracking-[0.28em] text-slate-400">Conflict Detector</p>
+            <h3 className="text-2xl font-black text-slate-900 mt-2">
+              {conflicts.sameDayConflicts.length + conflicts.overloadedUsers.length}
+            </h3>
+            <p className="text-sm text-slate-500 mt-2 break-words">
+              Same-day task overlaps and overloaded assignees across your active events.
+            </p>
+
+            <div className="space-y-3 mt-5">
+              {firstConflict ? (
+                <div className="rounded-2xl border border-red-200 bg-red-50 p-4">
+                  <p className="text-sm font-bold text-red-700">Same-day overlap</p>
+                  <p className="text-sm text-red-600 mt-1 break-words">
+                    {firstConflict.username} has {firstConflict.taskCount} tasks on {firstConflict.dateKey}.
+                  </p>
+                </div>
+              ) : null}
+
+              {firstOverload ? (
+                <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
+                  <p className="text-sm font-bold text-amber-700">Heavy assignment load</p>
+                  <p className="text-sm text-amber-600 mt-1 break-words">
+                    {firstOverload.username} is carrying {firstOverload.taskCount} active tasks.
+                  </p>
+                </div>
+              ) : null}
+
+              {!firstConflict && !firstOverload ? (
+                <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
+                  <p className="text-sm font-bold text-emerald-700">No conflicts right now</p>
+                  <p className="text-sm text-emerald-600 mt-1 break-words">
+                    The current workload looks balanced.
+                  </p>
+                </div>
+              ) : null}
+            </div>
+          </div> */}
+        </div>
       </div>
 
       <div className="flex flex-wrap gap-4 mb-8">
@@ -325,9 +327,16 @@ export default function Dashboard() {
                 <input
                   type="text"
                   placeholder="Enter event name..."
-                  className="w-full px-4 py-3 border border-slate-300 rounded-lg mb-6 focus:ring-1 focus:ring-black focus:border-black outline-none transition"
+                  className="w-full px-4 py-3 border border-slate-300 rounded-lg mb-4 focus:ring-1 focus:ring-black focus:border-black outline-none transition"
                   value={eventName}
                   onChange={(e) => setEventName(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && createEvent()}
+                />
+                <input
+                  type="date"
+                  className="w-full px-4 py-3 border border-slate-300 rounded-lg mb-6 focus:ring-1 focus:ring-black focus:border-black outline-none transition text-slate-700"
+                  value={eventDeadline}
+                  onChange={(e) => setEventDeadline(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && createEvent()}
                 />
                 <div className="flex gap-3">
@@ -343,6 +352,8 @@ export default function Dashboard() {
                     onClick={() => {
                       setShowCreateModal(false);
                       setCreatedEventCode('');
+                      setEventName('');
+                      setEventDeadline('');
                     }}
                     className="flex-1 bg-slate-100 text-slate-700 py-3 rounded-lg font-medium hover:bg-slate-200 transition"
                   >

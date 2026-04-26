@@ -140,30 +140,7 @@ export default function CalendarPage() {
         ))}
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
-        <div className="xl:col-span-8">
-          <div className="bg-white rounded-[2rem] border border-slate-200/70 shadow-sm p-4 md:p-6">
-            <FullCalendar
-              plugins={[dayGridPlugin]}
-              initialView="dayGridMonth"
-              headerToolbar={{
-                left: 'prev,next today',
-                center: 'title',
-                right: ''
-              }}
-              events={items}
-              height="auto"
-              dayMaxEvents={3}
-              eventClassNames={buildCalendarClassNames}
-              eventContent={(eventInfo) => <CalendarEventContent event={eventInfo.event} />}
-              eventClick={(eventInfo) => {
-                navigate(`/event/${eventInfo.event.extendedProps.eventId}`);
-              }}
-            />
-          </div>
-        </div>
-
-        <div className="xl:col-span-4 space-y-6">
+      <div className="flex flex-row space-x-6 mb-6">
           <div className="bg-white rounded-[2rem] border border-slate-200/70 shadow-sm p-6">
             <div className="flex items-center justify-between mb-4">
               <div>
@@ -236,32 +213,60 @@ export default function CalendarPage() {
             </div>
           </div>
 
-          <div className="bg-slate-950 rounded-[2rem] text-white p-6">
-            <p className="text-xs font-black uppercase tracking-[0.28em] text-slate-400">Legend</p>
-            <div className="space-y-3 mt-5">
-              <div className="flex items-center gap-3">
-                <span className="w-4 h-4 rounded bg-slate-200" />
-                <span className="text-sm text-slate-200">Active task</span>
-              </div>
-              <div className="flex items-center gap-3">
-                <span className="w-4 h-4 rounded bg-amber-300" />
-                <span className="text-sm text-slate-200">Deadline near</span>
-              </div>
-              <div className="flex items-center gap-3">
-                <span className="w-4 h-4 rounded bg-red-400" />
-                <span className="text-sm text-slate-200">Conflict or overload</span>
-              </div>
+        </div>
+
+      <div className="flex flex-col md:flex-row md:items-center justify-between bg-slate-950 rounded-[2rem] text-white p-6 md:px-8 mb-6 shadow-md">
+        <div>
+          <p className="text-xs font-black uppercase tracking-[0.28em] text-slate-400">Legend</p>
+          <div className="flex flex-wrap items-center gap-6 mt-3">
+            <div className="flex items-center gap-2">
+              <span className="w-3 h-3 rounded-full bg-slate-200" />
+              <span className="text-sm font-medium text-slate-200">Active task</span>
             </div>
-            <button
-              type="button"
-              onClick={() => navigate('/dashboard')}
-              className="mt-6 inline-flex items-center gap-2 rounded-2xl bg-white/10 px-4 py-3 text-sm font-bold text-white"
-            >
-              Open Dashboard
-              <MdNorthEast className="text-base" />
-            </button>
+            <div className="flex items-center gap-2">
+              <span className="w-3 h-3 rounded-full bg-amber-300" />
+              <span className="text-sm font-medium text-slate-200">Deadline near</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="w-3 h-3 rounded-full bg-red-400" />
+              <span className="text-sm font-medium text-slate-200">Conflict or overload</span>
+            </div>
           </div>
         </div>
+        <button
+          type="button"
+          onClick={() => navigate('/dashboard')}
+          className="mt-6 md:mt-0 inline-flex items-center gap-2 rounded-2xl bg-white/10 px-5 py-3 text-sm font-bold text-white hover:bg-white/20 transition-all active:scale-95"
+        >
+          Open Dashboard
+          <MdNorthEast className="text-base" />
+        </button>
+      </div>
+
+      <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
+        <div className="xl:col-span-12">
+          <div className="bg-white rounded-[2rem] border border-slate-200/70 shadow-sm p-4 md:p-6">
+            <FullCalendar
+              plugins={[dayGridPlugin]}
+              initialView="dayGridMonth"
+              headerToolbar={{
+                left: 'prev,next today',
+                center: 'title',
+                right: ''
+              }}
+              events={items}
+              height="auto"
+              dayMaxEvents={3}
+              eventClassNames={buildCalendarClassNames}
+              eventContent={(eventInfo) => <CalendarEventContent event={eventInfo.event} />}
+              eventClick={(eventInfo) => {
+                navigate(`/event/${eventInfo.event.extendedProps.eventId}`);
+              }}
+            />
+          </div>
+        </div>
+
+        
       </div>
     </Layout>
   );

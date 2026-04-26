@@ -281,7 +281,7 @@ const getConflictSummary = async (
 // ---------- CREATE EVENT ----------
 router.post("/create", auth, async (req, res) => {
   try {
-    const { eventName } = req.body;
+    const { eventName, deadline } = req.body;
     const userId = req.userId;
 
     const eventCode = crypto.randomBytes(3).toString("hex").toUpperCase();
@@ -289,6 +289,7 @@ router.post("/create", auth, async (req, res) => {
     const event = await Event.create({
       eventName,
       eventCode,
+      deadline: deadline ? new Date(deadline) : null,
       organizer: userId,
       members: [userId]
     });
@@ -570,6 +571,61 @@ router.post("/join", auth, async (req, res) => {
     });
 
     res.json({ success: true, message: "Joined event", event });
+  } catch (err) {
+    res.json({ success: false, error: err.message });
+  }
+});
+
+// ---------- ADD MEMBER (ORGANIZER ONLY) ----------
+router.post("/:id/members/add", auth, async (req, res) => {
+  try {
+    const eventId = req.params.id;
+    const userId = req.userId;
+    const { email } = req.body;
+
+    if (!email) {
+      return res.json({ success: false, error: "Email is required" });
+    }
+
+    const event = await Event.findById(eventId);
+    if (!event) return res.json({ success: false, error: "Event not found" });
+
+    if (String(event.organizer) !== String(userId)) {
+      return res.json({ success: false, error: "Only the organizer can add members directly" });
+    }
+
+    const newMember = await User.findOne({ email });
+    if (!newMember) {
+      return res.json({ 
+        success: false, 
+        error: "Not logged in user and member should be added by organizer only"
+      });
+    }
+
+    if (event.members.some((memberId) => String(memberId) === String(newMember._id))) {
+      return res.json({ success: false, error: "User is already a member of this event" });
+    }
+
+    const io = getIO();
+    const organizerUser = await User.findById(userId);
+
+    event.members.push(newMember._id);
+    event.activities.push({
+      action: "member-added",
+      message: `${organizerUser.username} added ${newMember.username} to the event`,
+      user: userId
+    });
+
+    await event.save();
+
+    io.to(String(event._id)).emit("activities-updated", event.activities);
+    io.to(String(event._id)).emit("members-updated", event.members);
+
+    await User.findByIdAndUpdate(newMember._id, {
+      $push: { joinedEvents: event._id }
+    });
+
+    res.json({ success: true, message: "Member added successfully" });
   } catch (err) {
     res.json({ success: false, error: err.message });
   }
