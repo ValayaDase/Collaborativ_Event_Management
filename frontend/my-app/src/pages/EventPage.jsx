@@ -65,7 +65,7 @@ export default function EventPage() {
   const [taskTitle, setTaskTitle] = useState('');
   const [taskDesc, setTaskDesc] = useState('');
   const [taskDueDate, setTaskDueDate] = useState('');
-  const [assignedTo, setAssignedTo] = useState('');
+  const [assignedTo, setAssignedTo] = useState([]);
   const [deadlineInput, setDeadlineInput] = useState('');
   const [conflictTaskIds, setConflictTaskIds] = useState([]);
   const [isChatOpen, setIsChatOpen] = useState(false);
@@ -165,7 +165,7 @@ export default function EventPage() {
           title: taskTitle,
           description: taskDesc,
           dueDate: taskDueDate || undefined,
-          assignedTo: isOrganizer ? assignedTo : currentUserId
+          assignedTo: assignedTo
         },
         { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }
       );
@@ -175,7 +175,7 @@ export default function EventPage() {
         setTaskTitle('');
         setTaskDesc('');
         setTaskDueDate('');
-        setAssignedTo('');
+        setAssignedTo([]);
         setTasks(res.data.tasks);
         loadEvent();
         loadConflicts();
@@ -240,6 +240,25 @@ export default function EventPage() {
       }
     } catch (error) {
       toast.error(error.response?.data?.error || 'Failed to delete task');
+    }
+  };
+
+  const updateTaskAssignees = async (taskId, newAssignees) => {
+    try {
+      const res = await axios.patch(
+        `${API_URL}/event/${eventId}/tasks/${taskId}/assign`,
+        { assignedTo: newAssignees },
+        { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }
+      );
+
+      if (res.data.success) {
+        setTasks(res.data.tasks);
+        loadEvent();
+        loadConflicts();
+        toast.success('Task assignees updated');
+      }
+    } catch (error) {
+      toast.error(error.response?.data?.error || 'Failed to update assignees');
     }
   };
 
@@ -372,14 +391,16 @@ export default function EventPage() {
               </div>
 
               <div className="flex flex-col sm:flex-row gap-3">
-                <button
-                  type="button"
-                  onClick={() => setShowTaskModal(true)}
-                  className="flex items-center justify-center gap-2 px-6 py-3 bg-slate-900 hover:bg-black text-white rounded-2xl font-bold transition-all shadow-lg shadow-slate-200"
-                >
-                  <MdAdd className="text-xl" />
-                  New Task
-                </button>
+                {isOrganizer && (
+                  <button
+                    type="button"
+                    onClick={() => setShowTaskModal(true)}
+                    className="flex items-center justify-center gap-2 px-6 py-3 bg-slate-900 hover:bg-black text-white rounded-2xl font-bold transition-all shadow-lg shadow-slate-200"
+                  >
+                    <MdAdd className="text-xl" />
+                    New Task
+                  </button>
+                )}
                 {isOrganizer && (
                   <button
                     type="button"
@@ -520,6 +541,8 @@ export default function EventPage() {
                 deleteTask={handleDeleteTask}
                 eventDeadline={event.deadline}
                 conflictTaskIds={conflictTaskIds}
+                updateTaskAssignees={updateTaskAssignees}
+                members={members}
               />
             ))}
           </div>

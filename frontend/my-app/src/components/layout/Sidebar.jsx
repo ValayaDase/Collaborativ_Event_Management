@@ -50,7 +50,7 @@ export default function Sidebar() {
                 key={item.path}
                 to={item.path}
                 onClick={() => setIsOpen(false)}
-                className={`flex items-center gap-3 px-4 py-3 rounded-lg transition ${isActive ?  'bg-blue-600 text-white' : 'text-slate-300 hover:bg-slate-700'}`}
+                className={`flex items-center gap-3 px-4 py-3 rounded-lg transition ${isActive ?  'bg-gray-500 text-white' : 'text-slate-300 hover:bg-slate-700'}`}
               >
                 <Icon className="w-5 h-5" />
                 <span className="font-medium">{item.label}</span>

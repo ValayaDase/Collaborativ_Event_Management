@@ -74,11 +74,11 @@
 }
 
 .eventhub-calendar-task {
-  @apply bg-slate-100 text-slate-800;
+  @apply bg-slate-500;
 }
 
 .eventhub-calendar-deadline {
-  @apply bg-amber-100 text-amber-800;
+  @apply bg-amber-800 ;
 }
 
 .eventhub-calendar-conflict {

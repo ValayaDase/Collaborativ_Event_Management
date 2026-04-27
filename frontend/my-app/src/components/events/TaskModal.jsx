@@ -87,28 +87,31 @@ export default function TaskModal({
               <label className="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
                 <MdPerson /> Assign To
               </label>
-              <select
-                value={assignedTo}
-                onChange={(e) => setAssignedTo(e.target.value)}
-                className="w-full bg-slate-100/50 border-none rounded-2xl p-4 focus:ring-2 focus:ring-blue-500 outline-none appearance-none transition-all"
-              >
-                <option value="">Select Member</option>
+              <div className="w-full bg-slate-100/50 border-none rounded-2xl p-4 max-h-40 overflow-y-auto space-y-2">
                 {members.map(m => (
-                  <option key={m._id} value={m._id}>
-                    {m.username} {m._id === organizerId && '(Organizer)'}
-                  </option>
+                  <label key={m._id} className="flex items-center gap-3 p-2 hover:bg-slate-200/50 rounded-xl cursor-pointer transition-colors">
+                    <input
+                      type="checkbox"
+                      checked={assignedTo.includes(m._id)}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setAssignedTo([...assignedTo, m._id]);
+                        } else {
+                          setAssignedTo(assignedTo.filter(id => id !== m._id));
+                        }
+                      }}
+                      className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500"
+                    />
+                    <span className="text-sm font-medium text-slate-700">
+                      {m.username} {m._id === organizerId && '(Organizer)'}
+                    </span>
+                  </label>
                 ))}
-              </select>
+              </div>
             </div>
           )}
 
-          {!isOrganizer && (
-            <div className="bg-blue-50/80 border border-blue-200 rounded-2xl p-4">
-              <p className="text-sm font-bold text-blue-700">
-                ℹ️ This task will be assigned to you
-              </p>
-            </div>
-          )}
+
 
           <div className="flex gap-3 pt-4">
             <button

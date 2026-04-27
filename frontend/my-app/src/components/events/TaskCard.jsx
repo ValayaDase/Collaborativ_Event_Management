@@ -1,10 +1,12 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   MdArrowBack,
   MdArrowForward,
   MdCalendarToday,
   MdDelete,
-  MdWarningAmber
+  MdWarningAmber,
+  MdAdd,
+  MdClose
 } from 'react-icons/md';
 import { formatDateLabel, getTaskEffectiveDate, toDateInputValue } from '../../utils/eventUi';
 
@@ -18,9 +20,12 @@ export default function TaskCard({
   updateStatus,
   updateSchedule,
   eventDeadline,
-  hasConflict
+  hasConflict,
+  updateTaskAssignees,
+  members
 }) {
-  const canEdit = task.assignedTo && task.assignedTo._id === currentUserId;
+  const [showAssignMenu, setShowAssignMenu] = useState(false);
+  const canEdit = task.assignedTo && task.assignedTo.some(user => user._id === currentUserId);
   const canDelete = isOrganizer;
   const canSchedule = (canEdit || isOrganizer) && !isFinished;
   const effectiveDate = getTaskEffectiveDate(task, eventDeadline);
@@ -59,11 +64,55 @@ export default function TaskCard({
         ) : null}
       </div>
 
-      <div className="flex items-center gap-2 text-xs text-gray-500 mb-3">
-        {task.assignedTo ? (
-          <span className="font-medium text-gray-700">{task.assignedTo.username}</span>
+      <div className="flex items-center gap-2 text-xs text-gray-500 mb-3 flex-wrap">
+        {task.assignedTo && task.assignedTo.length > 0 ? (
+          task.assignedTo.map(user => (
+            <span key={user._id} className="font-medium text-gray-700 bg-gray-100 px-2 py-1 rounded-md">
+              {user.username}
+            </span>
+          ))
         ) : (
           <span className="italic">Unassigned</span>
+        )}
+        {isOrganizer && !isFinished && (
+          <div className="relative">
+            <button
+              onClick={() => setShowAssignMenu(!showAssignMenu)}
+              className="p-1 hover:bg-gray-100 rounded-md transition-colors flex items-center justify-center text-gray-600 bg-gray-50 border border-gray-200"
+              title="Assign Members"
+            >
+              <MdAdd size={14} />
+            </button>
+            {showAssignMenu && (
+              <div className="absolute top-full mt-1 left-0 w-48 bg-white shadow-xl rounded-xl border border-gray-100 p-2 z-[60]">
+                <div className="flex justify-between items-center mb-2 px-1">
+                  <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Assign Members</span>
+                  <button onClick={() => setShowAssignMenu(false)} className="text-gray-400 hover:text-gray-600 p-1"><MdClose size={14}/></button>
+                </div>
+                <div className="max-h-32 overflow-y-auto space-y-1">
+                  {members.map(m => {
+                    const isAssigned = task.assignedTo && task.assignedTo.some(u => u._id === m._id);
+                    return (
+                      <label key={m._id} className="flex items-center gap-2 p-1.5 hover:bg-gray-50 rounded-lg cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={isAssigned}
+                          onChange={(e) => {
+                            const newAssignees = e.target.checked 
+                              ? [...(task.assignedTo || []).map(u => u._id), m._id]
+                              : (task.assignedTo || []).filter(u => u._id !== m._id).map(u => u._id);
+                            updateTaskAssignees(task._id, newAssignees);
+                          }}
+                          className="w-3.5 h-3.5 rounded text-slate-800 focus:ring-slate-800"
+                        />
+                        <span className="text-xs font-medium text-gray-700">{m.username}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
         )}
       </div>
 

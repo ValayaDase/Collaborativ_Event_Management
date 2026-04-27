@@ -44,7 +44,9 @@ export default function KanbanColumn({
   updateStatus,
   updateSchedule,
   eventDeadline,
-  conflictTaskIds = []
+  conflictTaskIds = [],
+  updateTaskAssignees,
+  members
 }) {
   const config = statusConfig[status];
   const Icon = config.icon;
@@ -90,6 +92,8 @@ export default function KanbanColumn({
               updateSchedule={updateSchedule}
               eventDeadline={eventDeadline}
               hasConflict={conflictSet.has(task._id)}
+              updateTaskAssignees={updateTaskAssignees}
+              members={members}
             />
           ))
         )}
