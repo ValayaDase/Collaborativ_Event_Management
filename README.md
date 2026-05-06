@@ -198,9 +198,7 @@ POST    /api/events/:id/comment   # Comment on event
 
 ## 📈 Future Improvements
 
-- Integrate calendar sync (Google/Outlook)
 - Add video conferencing (Zoom/MS Teams) links
-- In-app chat for event participants
 - Mobile app (React Native)
 - Role-based analytics dashboards
 
